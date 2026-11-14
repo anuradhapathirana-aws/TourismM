@@ -1,0 +1,8 @@
+# The project root is inside Laragon's web root. Block web access to tooling
+# folders (Claude skills, git) and lock files. Production should serve
+# frontend/dist (and later the Laravel public/ folder), not this root.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule (^|/)\.(claude|git|agents)(/|$) - [F,L]
+  RewriteRule ^skills-lock\.json$ - [F,L]
+</IfModule>

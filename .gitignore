@@ -1,0 +1,21 @@
+# Dependencies & builds
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Claude Code local settings (the shared skills in .claude/skills ARE committed)
+.claude/settings.local.json

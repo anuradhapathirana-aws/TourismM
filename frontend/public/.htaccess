@@ -1,0 +1,10 @@
+# Copied into dist/ on build. Sends every non-file request to index.html
+# so React Router can handle deep links like /tours/southern-coast-escape.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
