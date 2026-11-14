@@ -1,0 +1,51 @@
+/*
+ * Lean Global admin: compact layout (loaded after Filament's CSS by AdminPanelProvider).
+ * Goal: fit a whole page on one screen. Smaller headings, tighter spacing, short table rows.
+ * Prefixed with .fi-body so these rules win over Filament's single-class utilities.
+ */
+
+/* Page shell */
+.fi-body .fi-main { padding-inline: 1rem; }
+.fi-body .fi-page > section { row-gap: 1rem; padding-block: 1rem; }
+.fi-body .fi-page > section > div.grid { row-gap: 1rem; }
+.fi-body .fi-header { gap: .75rem; }
+.fi-body .fi-header-heading { font-size: 1.375rem; line-height: 1.75rem; }
+.fi-body .fi-header-subheading { font-size: .875rem; margin-top: .25rem; }
+.fi-body .fi-breadcrumbs { font-size: .75rem; }
+.fi-body .fi-breadcrumbs ol { row-gap: 0; }
+
+/* Sidebar */
+.fi-body .fi-logo { font-size: 1.05rem; line-height: 1.25rem; }
+.fi-body .fi-sidebar-nav { padding-block: 1rem; row-gap: 1rem; }
+.fi-body .fi-sidebar-group-label { font-size: .75rem; letter-spacing: .02em; }
+.fi-body .fi-sidebar-item-button { padding-block: .375rem; }
+
+/* Sections + forms */
+.fi-body .fi-section-header-heading { font-size: .9375rem; }
+.fi-body .fi-section-header-description { font-size: .8125rem; }
+.fi-body .fi-fo-component-ctn { gap: .875rem; }
+.fi-body .fi-fo-field-wrp > .grid { row-gap: .375rem; }
+.fi-body .fi-fo-field-wrp-label span { font-size: .8125rem; }
+.fi-body .fi-fo-field-wrp-hint { font-size: .75rem; }
+.fi-body .fi-fo-field-wrp-hint svg { width: 1.05rem; height: 1.05rem; cursor: help; }
+.fi-body .fi-fo-checkbox-list { gap: .5rem; }
+.fi-body .fi-fo-rich-editor trix-editor { min-height: 7rem; max-height: 22rem; overflow-y: auto; }
+.fi-body .fi-fo-rich-editor trix-toolbar .trix-button-row { padding-block: .25rem; }
+
+/* Live validation (public/js/admin-validation.js) */
+.fi-body .fi-input-wrp.lg-invalid { --tw-ring-color: rgba(var(--danger-600), 1) !important; box-shadow: 0 0 0 1px rgba(var(--danger-600), 1) !important; }
+.dark .fi-body .fi-input-wrp.lg-invalid, .dark.fi-body .fi-input-wrp.lg-invalid { box-shadow: 0 0 0 1px rgba(var(--danger-500), 1) !important; }
+.fi-body .lg-counter { margin-inline-start: auto; font-size: .7rem; color: rgba(var(--gray-500), 1); font-variant-numeric: tabular-nums; }
+.fi-body .lg-counter.lg-counter-near { color: rgba(var(--warning-500), 1); }
+
+/* Tables: short rows */
+.fi-body .fi-ta-header-cell { padding-block: .5rem; font-size: .8125rem; }
+.fi-body .fi-ta-row .py-4 { padding-top: .4rem; padding-bottom: .4rem; }
+.fi-body .fi-ta-row .fi-ta-actions { gap: .125rem; }
+.fi-body .fi-ta-header-toolbar { padding-block: .5rem; }
+.fi-body .fi-ta-text-item-label,
+.fi-body .fi-ta-text-description { font-size: .8125rem; }
+
+/* Modals / slide-overs */
+.fi-body .fi-modal-header { padding-block: .875rem; }
+.fi-body .fi-modal-heading { font-size: 1.125rem; }

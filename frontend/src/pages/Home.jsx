@@ -35,7 +35,7 @@ export default function Home() {
     <>
       <Hero testimonials={testimonials || []} />
       <About />
-      <Destinations items={(destinations || []).filter((d) => d.featured)} onSelect={showOnMap} />
+      <Destinations items={(destinations || []).filter((d) => d.featured && d.image)} onSelect={showOnMap} />
       <WhyUs />
       <MeetGuides guides={guides || []} />
       <DestinationMap themes={themes || []} destinations={destinations || []} selected={selected} />

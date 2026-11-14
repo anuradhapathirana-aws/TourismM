@@ -9,10 +9,60 @@ Marketing website for **Lean Global Travel & Tourism**, a Sri Lanka private-tour
 | Part | Status | Location |
 |------|--------|----------|
 | Frontend: React 19 + Vite 6 SPA | **Built** | `frontend/` |
-| Backend + admin: Laravel API & admin panel | **Not started.** The owner will build it | `backend/` (future) |
+| Backend + admin: Laravel 12 API + Filament 3 admin | **Phase 1 built** (Locations: cities, destination points, themes, place types, users/roles) | `backend/` |
 
-Until the backend exists the frontend runs entirely on **local mock data** (`frontend/src/data/`).
-Do not add PHP, a database or an admin UI unless asked. The backend will be Laravel.
+**Backend architecture, schema, validation, security and roadmap: [`docs/backend-architecture.md`](docs/backend-architecture.md).** Read it before backend work.
+The frontend fetches only the modules listed in `LIVE_MODULES` (`frontend/src/services/api.js`) from the API.
+Everything else (tours, guides, testimonials, FAQs, settings, enquiries) still uses mock data until its backend module is built.
+
+### Backend essentials
+- **Private admin:** served only at `/{ADMIN_PATH}` (`backend/.env`). Never link to it from the website, never use `/admin`.
+  Create users with `php artisan make:admin` (no public registration).
+- **Roles:** `super-admin` (everything), `content-editor` (locations), `inquiry-manager` (future). Catalogue: `app/Support/Permissions.php`.
+  Each model has a policy that extends `ResourcePolicy`.
+- **Validation:** one rule set per entity in `app/Support/Validation/*Rules.php`, used by the Filament forms (via `FormRules::for`) and tests.
+  Never write field rules in only one place. Coordinates are limited to Sri Lanka by `config/locations.php`.
+- **Sanitising:** models use `SanitizesInput` (`$plainText` strips tags, `$richText` purified by the "rich" allow-list in `config/purify.php`).
+- **Images:** spatie medialibrary via `InteractsWithImages` (thumb/card/large WebP). Upload rules in `CommonRules::image()`: no SVG, max 5 MB, min 800×500.
+- **Public API:** read-only `GET /api/v1/*`, 60 req/min. Only `published` points in active cities.
+- **Queue:** `QUEUE_CONNECTION=database`. The 1600px `large` image conversion is queued, so run `php artisan queue:work` (cron/Supervisor in production).
+- **Filament gotcha:** closures get their arguments injected by *name*. Use `$query`, `$record`, `$get`, `$state`, never `$q` or `$d`.
+- **New module checklist:** migration → model (+ traits) → `*Rules` → Policy + `Permissions::RESOURCES` → seeder → Filament Resource (follow "Admin UI" below) → API Resource/controller/route → tests → add to `LIVE_MODULES`.
+
+### Admin UI (Filament): compact, fits one screen
+The owner wants admin pages to fit on one screen with as little scrolling as possible. Shared setup lives in
+`app/Filament/Support/AdminUi.php` (registered in `AdminPanelProvider::boot()`) and `backend/public/css/admin.css`.
+- **Layout:** full-width content, 15rem sidebar that collapses to icons (`‹` button). Edit pages use
+  `$form->columns(['lg' => 4])`: main group `columnSpan(['lg' => 3])` + side group (Publishing, images) `['lg' => 1]`.
+- **Fields per row:** wrap fields in `AdminUi::grid([...])` (12 columns, 6 on tablets) and size every field
+  to its data with `->span(...)`: `xs` numbers/sort/toggles · `sm` coordinates, short selects, dates, phone ·
+  `md` names, slugs, emails · `lg` addresses, titles · `xl` long single-line text · `full` rich text, galleries, long textareas.
+- **Help text:** `->tip('…')` (a "?" at the end of the label row, text shows on hover). **Never use `->helperText()`**
+  or explanatory Placeholders/section descriptions.
+- **Tables:** single-line rows, so no `->description()` under a column; give the data its own column. Image columns are 32px (global).
+  Row actions are **icon-only** with a tooltip: Edit/View/Delete/Restore/ForceDelete/Replicate are configured globally;
+  custom row actions must call `->iconButton()->tooltip('…')`. Don't hide row actions in an `ActionGroup`.
+- **Sections** are compact (global). Fonts and spacing are reduced in `admin.css`; adjust there, not inline.
+- `tests/Feature/AdminUiTest.php` renders every admin page. Add new pages to its list.
+
+### Form validation: two layers, every form
+1. **Browser (instant, UX only):** `backend/public/js/admin-validation.js` checks a field when the user leaves it,
+   then on every keystroke, and blocks submit while a field is wrong. It reads the HTML attributes Filament renders,
+   so **always mirror the server rule on the field**: `->required()`, `->minLength()`, `->maxLength()`,
+   `->minValue()/->maxValue()`, `->integer()`/`->numeric()`, `->email()`, and `->livePattern($regex, 'message')` for every
+   regex rule. Fields with `maxLength ≥ 50` get a "n / max" counter automatically. Password pairs: `data-lg-wait-for` on the
+   password and `data-lg-match` on the confirmation (see `UserResource`). Selects, rich text, uploads and uniqueness are
+   checked by the server only.
+2. **Server (authoritative):** every field also gets `->rules(FormRules::for($rules, 'field'))` from its
+   `app/Support/Validation/*Rules.php` class (and `->nestedRecursiveRules()` for array items). Never trust the browser layer.
+   Any other entry point (artisan commands, future write APIs) reuses the same `*Rules` class.
+- Write a clear custom message for rules the user can't guess (`->validationMessages([...])`, e.g. unique-per-city).
+- Test both: required/format/unique/limit failures and a valid save per form (see `tests/Feature/FormValidationTest.php`).
+
+- **Performance:** admin runs in Filament SPA mode (`->spa()`); OPcache must be on. After adding a Filament
+  Resource/Page/Widget run `php artisan filament:cache-components`, or it won't show. Production checklist: docs §10.
+
+Backend commands (inside `backend/`): `php artisan serve` · `php artisan test` · `./vendor/bin/pint` · `php artisan migrate --seed` (`SEED_IMAGES=true` downloads demo photos).
 
 ## Repository layout
 
@@ -23,8 +73,9 @@ TourismM/
 │    ui-ux-pro-max/, laravel-specialist/, find-skills/
 ├─ skills-lock.json          ← records where the skill came from (used by `npx skills`)
 ├─ .htaccess                 ← blocks web access to .claude/.git (root sits in Laragon's www)
+├─ docs/backend-architecture.md ← backend PRD: domain model, schema, validation, security, API, roadmap
 ├─ frontend/                 ← React app (all UI work happens here)
-└─ backend/                  ← (future) Laravel app
+└─ backend/                  ← Laravel 12 API + Filament admin (private path)
 ```
 
 ### Frontend structure (`frontend/src/`)
@@ -120,17 +171,21 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux
   Clicking a photo card in the "Explore our beautiful island" mosaic spotlights that single place on this map.
   No map library and no API key are used.
 
-## API contract for the future Laravel backend
+## API contract (frontend ↔ Laravel)
 
-Set `VITE_API_URL` in `frontend/.env` (see `.env.example`) and `services/api.js` switches from mock data
-to HTTP. Responses may be wrapped in `{ "data": ... }` (Laravel API Resources). Both forms work.
+Set `VITE_API_URL=http://localhost:8000/api/v1` in `frontend/.env` (see `.env.example`). Modules listed in
+`LIVE_MODULES` (`services/api.js`) are then fetched over HTTP. Responses are wrapped in `{ "data": ... }`.
 Field names below are what the frontend expects (camelCase). Map snake_case columns in the Laravel Resource.
+✅ = served by the backend now. The rest are planned and their shapes are fixed by the frontend.
 
 | Method | Endpoint | Returns |
 |--------|----------|---------|
 | GET | `/settings` | site object: same shape as `config/site.js` (name, shortName, phone, whatsapp, email, address, hours, currency, founded, stats{travellers,packages,destinations,rating,reviews}, social{…}, hero{eyebrow,title,highlight,subtitle,videos[],poster}) |
-| GET | `/destinations` | `[{ id, name, category, lat, lng, themes[], featured, description, image }]`. `themes` = theme slugs (many-to-many). `featured: true` also shows it in the photo mosaic (then `image` + `description` are required) |
-| GET | `/themes` | `[{ id, slug, title, image, side }]` (`side`: `"left"`/`"right"` column on desktop; 6 themes fit the layout best) |
+| GET ✅ | `/destinations` | `[{ id, slug, name, category, lat, lng, themes[], featured, description, image, thumb, city{id,name,slug} }]`. `description` = short summary. Filters: `?theme=&city=&type=&featured=1`. The mosaic shows `featured` points that have an `image` |
+| GET ✅ | `/destinations/{slug}` | the above + `content` (HTML), `gallery[]`, `address`, `openingHours`, `entryFee`, `bestTimeToVisit`, `visitDurationMinutes`, `district`, `province` |
+| GET ✅ | `/cities`, `/cities/{slug}` | cities with `destinationsCount`; the detail endpoint includes `destinations[]` |
+| GET ✅ | `/themes` | `[{ id, slug, title, image, side }]` (`side`: `"left"`/`"right"` column on desktop; 6 themes fit the layout best) |
+| GET ✅ | `/place-types` | `[{ id, slug, name, icon }]` |
 | GET | `/tours` | `[{ id, slug, title, category, duration, price, featured, image, summary, highlights[], itinerary[{title,details}], inclusions[] }]` |
 | GET | `/tours/{slug}` | single tour (404 → frontend shows "Tour not found") |
 | GET | `/guides` | `[{ id, name, role, bio, photo, languages[], specialties[], years, toursLed, rating, whatsapp }]` |
@@ -138,10 +193,9 @@ Field names below are what the frontend expects (camelCase). Map snake_case colu
 | GET | `/faqs` | `[{ id, question, answer }]` |
 | POST | `/inquiries` | body: `{ name, email, phone, country, date, travellers, tour, tour_slug, message }` → 201. Validation errors → 422 `{ errors: { field: [msg] } }` (Laravel default, shown under the fields) |
 
-Suggested admin (Laravel) scope: CRUD for tours, destinations (name, lat/lng, theme checkboxes, featured,
-image, description), themes, guides, testimonials, FAQs; settings page
-(contact details, stats, hero video upload); inquiries inbox with status (new/read/replied).
-Enable CORS for the frontend origin.
+Remaining admin scope (roadmap in `docs/backend-architecture.md`): tours, guides, testimonials, FAQs,
+settings page (contact details, stats, hero video upload), inquiries inbox (new/read/replied).
+CORS origins come from `FRONTEND_URLS` in `backend/.env`.
 
 ## Deployment
 

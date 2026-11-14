@@ -15,27 +15,37 @@ import { faqs } from '@/data/faqs'
 import { themes } from '@/data/themes'
 
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
-export const hasBackend = API_URL !== ''
+const apiConfigured = API_URL !== ''
+
+/**
+ * Modules the Laravel backend already serves. Everything else keeps using mock data,
+ * so the site works while the backend is built module by module.
+ * Add a name here when its endpoint goes live (see docs/backend-architecture.md → Roadmap).
+ */
+const LIVE_MODULES = new Set(['destinations', 'themes'])
+
+/** True when enquiries are POSTed to the API (otherwise the form hands them to WhatsApp). */
+export const hasBackend = apiConfigured && LIVE_MODULES.has('inquiries')
 
 const unwrap = (json) => (json && typeof json === 'object' && 'data' in json ? json.data : json)
 
-async function get(path, fallback) {
-  if (!hasBackend) return structuredClone(fallback)
+async function get(module, path, fallback) {
+  if (!apiConfigured || !LIVE_MODULES.has(module)) return structuredClone(fallback)
   const res = await fetch(`${API_URL}${path}`, { headers: { Accept: 'application/json' } })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`Request failed (${res.status})`)
   return unwrap(await res.json())
 }
 
-export const getSite = () => get('/settings', site)
-export const getDestinations = () => get('/destinations', destinations)
-export const getThemes = () => get('/themes', themes)
-export const getTours = () => get('/tours', tours)
+export const getSite = () => get('settings', '/settings', site)
+export const getDestinations = () => get('destinations', '/destinations', destinations)
+export const getThemes = () => get('themes', '/themes', themes)
+export const getTours = () => get('tours', '/tours', tours)
 export const getTour = (slug) =>
-  get(`/tours/${encodeURIComponent(slug)}`, tours.find((t) => t.slug === slug) ?? null)
-export const getGuides = () => get('/guides', guides)
-export const getTestimonials = () => get('/testimonials', testimonials)
-export const getFaqs = () => get('/faqs', faqs)
+  get('tours', `/tours/${encodeURIComponent(slug)}`, tours.find((t) => t.slug === slug) ?? null)
+export const getGuides = () => get('guides', '/guides', guides)
+export const getTestimonials = () => get('testimonials', '/testimonials', testimonials)
+export const getFaqs = () => get('faqs', '/faqs', faqs)
 
 /**
  * Submit an enquiry. Returns { ok: true } on success.
