@@ -19,7 +19,8 @@ Do not add PHP, a database or an admin UI unless asked. The backend will be Lara
 ```
 TourismM/
 ├─ CLAUDE.md                 ← this file
-├─ .claude/skills/ui-ux-pro-max/  ← UI/UX design skill (auto-loaded by Claude Code)
+├─ .claude/skills/           ← all skills live here (auto-loaded by Claude Code):
+│    ui-ux-pro-max/, laravel-specialist/, find-skills/
 ├─ skills-lock.json          ← records where the skill came from (used by `npx skills`)
 ├─ .htaccess                 ← blocks web access to .claude/.git (root sits in Laragon's www)
 ├─ frontend/                 ← React app (all UI work happens here)
@@ -72,9 +73,18 @@ npm run lint      # ESLint; keep it at zero problems
 - **Logo:** `LG-crop.jpg` has a black background and is rendered with `mix-blend-mode: screen` so it blends into dark surfaces. Only place it on dark backgrounds.
 - **Motion:** add class `reveal` to animate on scroll (handled globally by `useReveal`). Everything must respect `prefers-reduced-motion` (already wired in CSS and hooks).
 
-### Using the ui-ux-pro-max skill
-Use it for UI work (new sections, reviews, accessibility). Its auto-generated palette/fonts do **not**
-override the brand above. The owner's logo palette wins. Useful queries:
+## Skills (`.claude/skills/`)
+
+Load the matching skill before starting that kind of work. Where a skill disagrees with this file,
+**this file wins.**
+
+| Skill | Use for | Project rules that override it |
+|-------|---------|-------------------------------|
+| `ui-ux-pro-max` | any frontend UI work: new sections, reviews, accessibility | logo palette + fonts in "Design system"; its auto-generated palette/fonts are ignored |
+| `laravel-specialist` | all backend/admin work in `backend/` | endpoints, camelCase field names and response shapes in "API contract" |
+| `find-skills` | finding/installing new skills | install new skills into `.claude/skills/` (not `.agents/`) |
+
+Useful ui-ux-pro-max queries:
 ```bash
 python .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --stack react
 python .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux
