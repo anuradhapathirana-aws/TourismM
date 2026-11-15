@@ -4,13 +4,14 @@ import Footer from './Footer'
 import FloatingButtons from './FloatingButtons'
 import ScrollManager from './ScrollManager'
 import { useReveal } from '@/hooks/useReveal'
+import { PlannerProvider } from '@/context/PlannerContext'
 
 export default function Layout() {
   const { pathname } = useLocation()
   useReveal()
 
   return (
-    <>
+    <PlannerProvider>
       <a className="skip-link" href="#main">Skip to main content</a>
       <ScrollManager />
       <Header transparent={pathname === '/'} />
@@ -19,6 +20,6 @@ export default function Layout() {
       </main>
       <Footer />
       <FloatingButtons />
-    </>
+    </PlannerProvider>
   )
 }

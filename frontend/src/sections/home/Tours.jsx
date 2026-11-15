@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import SectionHeading from '@/components/ui/SectionHeading'
 import TourBrowser from '@/components/ui/TourBrowser'
+import PlanJourneyButton from '@/components/journey/PlanJourneyButton'
 
 /** Home: featured tours only. "Show more tours" opens the full list at /tours. */
 const FALLBACK_COUNT = 6
@@ -26,7 +27,7 @@ export default function Tours({ tours = [], categories = [] }) {
           </div>
         )}
         <p className="center muted-note">
-          Don’t see quite what you want? <Link to="/#contact">Let’s build your own journey together →</Link>
+          Don’t see quite what you want? <PlanJourneyButton />
         </p>
       </div>
     </section>

@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MAP_H, MAP_W, SRI_LANKA_PATH, project } from '@/utils/geo'
+import { DISTRICTS, districtAt } from '@/utils/districts'
 
 const LABEL_GAP = 27 // min vertical distance between labels on one side (viewBox units)
-
-/** Decorative hill/ridge strokes over the central highlands (viewBox units). */
-const RIDGES = [
-  [150, 405], [182, 395], [214, 412], [168, 440], [205, 448], [238, 436], [190, 474],
-  [226, 482], [258, 470], [175, 510], [212, 520], [248, 512], [140, 470], [270, 540],
-  [120, 300], [210, 300], [260, 360], [110, 560], [300, 420], [160, 590],
-]
 
 /**
  * Place labels left/right of their point and push them apart vertically so they never overlap.
@@ -61,7 +55,11 @@ export default function DestinationMap({ themes = [], destinations = [], selecte
   }, [selected])
 
   const points = useMemo(
-    () => destinations.map((d) => ({ ...d, pos: project(d.lat, d.lng) })).filter((d) => d.pos),
+    () =>
+      destinations
+        .map((d) => ({ ...d, pos: project(d.lat, d.lng) }))
+        .filter((d) => d.pos)
+        .map((d) => ({ ...d, district: districtAt(d.pos) })),
     [destinations],
   )
   const counts = useMemo(() => {
@@ -75,6 +73,7 @@ export default function DestinationMap({ themes = [], destinations = [], selecte
   const shown = focusPoint ? [focusPoint] : points.filter((p) => p.themes?.includes(current))
   const labelled = layoutLabels(shown)
   const shownIds = new Set(shown.map((p) => p.id))
+  const litDistricts = new Set(shown.map((p) => p.district).filter(Boolean))
   const currentTheme = themes.find((t) => t.slug === current)
   const groupKey = focusPoint ? `f-${focusPoint.id}-${selected?.n}` : current
 
@@ -126,34 +125,27 @@ export default function DestinationMap({ themes = [], destinations = [], selecte
             <div className="lk-map" id="lk-map">
               <svg className="lk-svg" viewBox={`0 0 ${MAP_W} ${MAP_H}`} aria-hidden="true" focusable="false">
                 <defs>
-                  <linearGradient id="lkLand" x1="0" y1="0" x2="0.6" y2="1">
-                    <stop offset="0" stopColor="#d3dd92" />
-                    <stop offset="0.45" stopColor="#a9c86f" />
-                    <stop offset="1" stopColor="#6fa35a" />
+                  {/* one gradient across the whole island (userSpaceOnUse), so districts shade as one landmass */}
+                  <linearGradient id="lkLand" gradientUnits="userSpaceOnUse" x1="60" y1="20" x2="340" y2="650">
+                    <stop offset="0" className="lk-land-a" />
+                    <stop offset="1" className="lk-land-b" />
                   </linearGradient>
                   <filter id="lkGlow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur stdDeviation="16" />
+                    <feGaussianBlur stdDeviation="18" />
                   </filter>
-                  <filter id="lkGrain">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" />
-                    <feColorMatrix values="0 0 0 0 0.15  0 0 0 0 0.25  0 0 0 0 0.05  0 0 0 0.55 0" />
-                    <feComposite in2="SourceGraphic" operator="in" />
-                  </filter>
-                  <clipPath id="lkClip"><path d={SRI_LANKA_PATH} /></clipPath>
                 </defs>
 
-                {/* sea glow + coastal contour rings */}
+                {/* soft drop shadow + faint gold coastal rings in the sea */}
                 <path d={SRI_LANKA_PATH} className="lk-sea-glow" filter="url(#lkGlow)" />
-                <path d={SRI_LANKA_PATH} className="lk-contour c3" />
                 <path d={SRI_LANKA_PATH} className="lk-contour c2" />
                 <path d={SRI_LANKA_PATH} className="lk-contour c1" />
 
-                {/* land */}
-                <path d={SRI_LANKA_PATH} fill="url(#lkLand)" />
-                <g clipPath="url(#lkClip)">
-                  <rect width={MAP_W} height={MAP_H} filter="url(#lkGrain)" opacity="0.35" />
-                  {RIDGES.map(([x, y], i) => (
-                    <path key={i} className="lk-ridge" d={`M${x - 14} ${y + 4} q7 -8 14 -4 q7 4 14 -2`} />
+                {/* land, drawn district by district; districts holding the shown places light up */}
+                <g className="lk-districts">
+                  {DISTRICTS.map((d) => (
+                    <path key={d.name} d={d.d} className={`lk-district${litDistricts.has(d.name) ? ' lit' : ''}`}>
+                      <title>{`${d.name} District, ${d.province} Province`}</title>
+                    </path>
                   ))}
                 </g>
                 <path d={SRI_LANKA_PATH} className="lk-coast" />

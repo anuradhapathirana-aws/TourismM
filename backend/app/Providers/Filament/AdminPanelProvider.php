@@ -59,6 +59,7 @@ final class AdminPanelProvider extends PanelProvider
             // Instant form validation in the browser (the server still validates everything on submit).
             ->renderHook(PanelsRenderHook::BODY_END, fn (): string => '<script src="'.self::asset('js/admin-validation.js').'" data-navigate-once defer></script>')
             ->navigationGroups([
+                NavigationGroup::make('Inquiries'),
                 NavigationGroup::make('Tours'),
                 NavigationGroup::make('Locations'),
                 NavigationGroup::make('Settings'),

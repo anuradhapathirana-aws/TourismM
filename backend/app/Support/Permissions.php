@@ -19,7 +19,7 @@ final class Permissions
     public const ACTIONS = ['view', 'create', 'update', 'delete', 'restore', 'force-delete'];
 
     /** Resource keys (permission prefix). */
-    public const RESOURCES = ['cities', 'destinations', 'tour-categories', 'tours', 'activities', 'themes', 'place-types', 'districts', 'provinces', 'users'];
+    public const RESOURCES = ['inquiries', 'guests', 'cities', 'destinations', 'tour-categories', 'tours', 'activities', 'themes', 'place-types', 'districts', 'provinces', 'users'];
 
     /** @return array<string, list<string>> role => resource keys it fully manages */
     public static function roles(): array
@@ -27,7 +27,7 @@ final class Permissions
         return [
             self::SUPER_ADMIN => self::RESOURCES, // also bypasses every check via Gate::before
             self::CONTENT_EDITOR => ['cities', 'destinations', 'tour-categories', 'tours', 'activities', 'themes', 'place-types'],
-            self::INQUIRY_MANAGER => [],          // gets 'inquiries' when that module is built
+            self::INQUIRY_MANAGER => ['inquiries', 'guests'],
         ];
     }
 

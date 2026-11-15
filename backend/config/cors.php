@@ -4,8 +4,8 @@ return [
 
     'paths' => ['api/*'],
 
-    // Public API is read-only
-    'allowed_methods' => ['GET', 'OPTIONS'],
+    // Read-only API, plus POST for the one write route (journey-requests)
+    'allowed_methods' => ['GET', 'POST', 'OPTIONS'],
 
     // FRONTEND_URLS in .env (comma separated)
     'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env('FRONTEND_URLS', 'http://localhost:5173'))))),

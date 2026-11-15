@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useSite } from '@/context/SiteContext'
 import { telLink } from '@/utils/format'
 import logo from '@/assets/images/LG-crop.jpg'
+import PlanJourneyButton from '@/components/journey/PlanJourneyButton'
 
 const NAV = [
   { to: '/#about', label: 'About' },
@@ -47,7 +48,9 @@ export default function Header({ transparent }) {
           {NAV.filter((n) => !n.section || site.sections?.[n.section] !== false).map((n) => (
             <Link key={n.to} to={n.to}>{n.label}</Link>
           ))}
-          <Link className="btn btn-gold nav-cta-mobile" to="/#contact">Plan My Trip</Link>
+          <PlanJourneyButton className="btn btn-gold nav-cta-mobile" onClick={() => setOpen(false)}>
+            <i className="bi bi-map" aria-hidden="true" /> Plan My Tour
+          </PlanJourneyButton>
         </nav>
 
         <div className="nav-actions">
@@ -55,7 +58,9 @@ export default function Header({ transparent }) {
             <i className="bi bi-telephone" aria-hidden="true" />
             <span>{site.phone}</span>
           </a>
-          <Link className="btn btn-gold btn-sm" to="/#contact">Plan My Trip</Link>
+          <PlanJourneyButton className="btn btn-gold btn-sm">
+            <i className="bi bi-map" aria-hidden="true" /> Plan My Tour
+          </PlanJourneyButton>
           <button
             type="button"
             className="nav-toggle"

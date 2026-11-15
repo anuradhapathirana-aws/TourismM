@@ -48,6 +48,10 @@ final class AppServiceProvider extends ServiceProvider
             : Password::min(UserRules::passwordMinLength()));
 
         RateLimiter::for('public-api', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        RateLimiter::for('journey-requests', fn (Request $request) => [
+            Limit::perMinute((int) config('inquiries.rate_limit.per_minute'))->by('jr-min:'.$request->ip()),
+            Limit::perDay((int) config('inquiries.rate_limit.per_day'))->by('jr-day:'.$request->ip()),
+        ]);
 
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof User) {

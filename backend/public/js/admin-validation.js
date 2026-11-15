@@ -16,8 +16,9 @@
     window.__lgLiveValidation = true;
 
     const FIELD = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=search]), textarea';
-    // Widgets with their own hidden inputs: left to the server.
-    const SKIP = '.choices, .fi-fo-rich-editor, .fi-fo-markdown-editor, .fi-fo-date-time-picker, .fi-fo-tags-input, .fi-fo-key-value, .filepond--root';
+    // Widgets with their own hidden inputs: left to the server. (.fi-fo-file-upload also holds the image
+    // editor's crop/size inputs; tracking them used to hide the server's "cover image is required" message.)
+    const SKIP = '.choices, .fi-fo-rich-editor, .fi-fo-markdown-editor, .fi-fo-date-time-picker, .fi-fo-tags-input, .fi-fo-key-value, .fi-fo-file-upload, .filepond--root';
     const INVALID = 'lg-invalid';
     const touched = new WeakSet();
 
@@ -103,9 +104,12 @@
             box.classList.remove(INVALID);
             el.removeAttribute('aria-invalid');
         }
-        // The user changed the value, so an older server message for this field is out of date.
-        wrapper.querySelectorAll('[data-validation-error]:not(.lg-live-error)').forEach((e) => { e.hidden = true; });
         return !message;
+    };
+
+    /** The user changed the value, so an older server message for this field is out of date. */
+    const hideServerError = (el) => {
+        wrapperOf(el)?.querySelectorAll('[data-validation-error]:not(.lg-live-error)').forEach((e) => { e.hidden = true; });
     };
 
     const validate = (el) => render(el, check(el));
@@ -158,6 +162,7 @@
 
     document.addEventListener('input', (e) => {
         if (!isTracked(e.target)) return;
+        hideServerError(e.target);
         counter(e.target);
         if (touched.has(e.target)) validate(e.target);
         revalidateLinked(e.target);

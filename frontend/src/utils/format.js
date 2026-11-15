@@ -23,8 +23,10 @@ export const waLink = (number, message = '') =>
 
 export const telLink = (phone) => `tel:${String(phone).replace(/[^\d+]/g, '')}`
 
-export const mailLink = (email, subject = '') =>
-  `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`
+export const mailLink = (email, subject = '', body = '') => {
+  const query = [subject && `subject=${encodeURIComponent(subject)}`, body && `body=${encodeURIComponent(body)}`].filter(Boolean).join('&')
+  return `mailto:${email}${query ? `?${query}` : ''}`
+}
 
 export const money = (value, currency = 'USD') => {
   try {

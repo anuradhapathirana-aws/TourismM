@@ -13,6 +13,7 @@ import { guides } from '@/data/guides'
 import { testimonials } from '@/data/testimonials'
 import { faqs } from '@/data/faqs'
 import { themes } from '@/data/themes'
+import { activities } from '@/data/activities'
 import { tourCategoryLabel, tourCategorySlug, unique } from '@/utils/format'
 
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
@@ -23,7 +24,7 @@ const apiConfigured = API_URL !== ''
  * so the site works while the backend is built module by module.
  * Add a name here when its endpoint goes live (see docs/backend-architecture.md → Roadmap).
  */
-const LIVE_MODULES = new Set(['destinations', 'themes', 'tours', 'tour-categories'])
+const LIVE_MODULES = new Set(['destinations', 'themes', 'tours', 'tour-categories', 'activities', 'journey-requests'])
 
 /** True when enquiries are POSTed to the API (otherwise the form hands them to WhatsApp). */
 export const hasBackend = apiConfigured && LIVE_MODULES.has('inquiries')
@@ -71,6 +72,32 @@ export const getTour = (slug) =>
 export const getGuides = () => get('guides', '/guides', guides)
 export const getTestimonials = () => get('testimonials', '/testimonials', testimonials)
 export const getFaqs = () => get('faqs', '/faqs', faqs)
+export const getActivities = () => get('activities', '/activities', activities)
+
+/** True when "Build your own journey" requests are POSTed to the API (otherwise they go to WhatsApp). */
+export const hasJourneyBackend = apiConfigured && LIVE_MODULES.has('journey-requests')
+
+/**
+ * Submit a "Build your own journey" request (POST /journey-requests).
+ * Returns { ok: true, reference } | { ok: false, errors } (422) | { ok: false, tooMany: true } (429)
+ * | { ok: false, fallback: 'whatsapp' } (module not live yet).
+ */
+export async function submitJourneyRequest(payload) {
+  if (!hasJourneyBackend) return { ok: false, fallback: 'whatsapp' }
+  const res = await fetch(`${API_URL}/journey-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (res.status === 422) {
+    const body = await res.json()
+    return { ok: false, errors: body.errors || {} }
+  }
+  if (res.status === 429) return { ok: false, tooMany: true }
+  if (!res.ok) throw new Error(`Could not send your request (${res.status})`)
+  const body = await res.json().catch(() => ({}))
+  return { ok: true, reference: unwrap(body)?.reference ?? null }
+}
 
 /**
  * Submit an enquiry. Returns { ok: true } on success.

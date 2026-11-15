@@ -4,6 +4,7 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { getTourCategories, getTours } from '@/services/api'
 import TourBrowser from '@/components/ui/TourBrowser'
 import PageLoader from '@/components/ui/PageLoader'
+import PlanJourneyButton from '@/components/journey/PlanJourneyButton'
 
 /** /tours: every published tour, filterable by category. ?category=beach-tours links straight to a tab. */
 export default function ToursPage() {
@@ -54,7 +55,7 @@ export default function ToursPage() {
             <p className="center muted-note">New tours are coming soon. <Link to="/#contact">Tell us what you’d like to see →</Link></p>
           ))}
           <p className="center muted-note">
-            Don’t see quite what you want? <Link to="/#contact">Let’s build your own journey together →</Link>
+            Don’t see quite what you want? <PlanJourneyButton />
           </p>
         </div>
       </section>

@@ -9,24 +9,29 @@ Marketing website for **Lean Global Travel & Tourism**, a Sri Lanka private-tour
 | Part | Status | Location |
 |------|--------|----------|
 | Frontend: React 19 + Vite 6 SPA | **Built** | `frontend/` |
-| Backend + admin: Laravel 12 API + Filament 3 admin | **Phase 1 + Tours built** (tours + tour categories + activities library; locations: cities, destination points, map themes, place types; users/roles) | `backend/` |
+| Backend + admin: Laravel 12 API + Filament 3 admin | **Phase 1 + Tours + Inquiries built** (custom tour inquiries inbox + guests; tours + tour categories + activities library; locations: cities, destination points, map themes, place types; users/roles) | `backend/` |
 
 **Backend architecture, schema, validation, security and roadmap: [`docs/backend-architecture.md`](docs/backend-architecture.md).** Read it before backend work.
 The frontend fetches only the modules listed in `LIVE_MODULES` (`frontend/src/services/api.js`) from the API.
-Everything else (guides, testimonials, FAQs, settings, enquiries) still uses mock data until its backend module is built.
+Everything else (guides, testimonials, FAQs, settings, the short tour enquiry form) still uses mock data / WhatsApp until its backend module is built.
 
 ### Backend essentials
 - **Private admin:** served only at `/{ADMIN_PATH}` (`backend/.env`). Never link to it from the website, never use `/admin`.
   Create users with `php artisan make:admin` (no public registration).
-- **Roles:** `super-admin` (everything), `content-editor` (locations), `inquiry-manager` (future). Catalogue: `app/Support/Permissions.php`.
+- **Roles:** `super-admin` (everything), `content-editor` (locations), `inquiry-manager` (inquiries + guests). Catalogue: `app/Support/Permissions.php`.
   Each model has a policy that extends `ResourcePolicy`.
 - **Validation:** one rule set per entity in `app/Support/Validation/*Rules.php`, used by the Filament forms (via `FormRules::for`) and tests.
   Never write field rules in only one place. Coordinates are limited to Sri Lanka by `config/locations.php`.
 - **Sanitising:** models use `SanitizesInput` (`$plainText` strips tags, `$richText` purified by the "rich" allow-list in `config/purify.php`).
 - **Images:** spatie medialibrary via `InteractsWithImages` (thumb/card/large WebP). Upload rules in `CommonRules::image()`: no SVG, max 5 MB, min 800×500.
-- **Public API:** read-only `GET /api/v1/*`, 60 req/min. Only `published` points in active cities, `published` tours in active categories.
+- **Public API:** read-only `GET /api/v1/*`, 60 req/min. The one write route is `POST /journey-requests` (extra per-IP limit 5/min + 20/day, honeypot `website`). Only `published` points in active cities, `published` tours in active categories.
   Successful GETs send `Cache-Control: public, max-age=60` + `ETag` (304 on repeat) via `PublicApiCache` (`API_CACHE_SECONDS`, 0 = off).
 - **Queue:** `QUEUE_CONNECTION=database`. The 1600px `large` image conversion is queued, so run `php artisan queue:work` (cron/Supervisor in production).
+- **Inquiries:** `guests` (one row per person, matched by lower-cased email; a returning guest's details are updated, a deleted one restored)
+  1─* `inquiries` (reference `LG-YYMM-#####`, status New → Contacted → Quoted → Booked / Lost, `type` custom_tour | package, `source`)
+  *─* destinations / activities (ordered pivots) · 1─* `inquiry_notes` (timeline). Option lists for the trip fields live in
+  `config/inquiries.php` and must match `frontend/src/components/journey/journeyOptions.js`. Website intake: `App\Services\InquiryIntake`.
+  Every status change writes a timeline row from the `Inquiry` model itself (set `$inquiry->statusNote` first to attach a note).
 - **Filament gotcha:** closures get their arguments injected by *name*. Use `$query`, `$record`, `$get`, `$state`, never `$q` or `$d`.
 - **New module checklist:** migration → model (+ traits) → `*Rules` → Policy + `Permissions::RESOURCES` → seeder → Filament Resource (follow "Admin UI" below) → API Resource/controller/route → tests → add to `LIVE_MODULES`.
 
@@ -173,6 +178,8 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux
   destination points + labels. Points are placed from real **latitude/longitude** via `utils/geo.js → project()`
   (same projection as the outline, which is Natural Earth 1:10m, public domain). Valid range: lat 5.85–9.95, lng 79.5–82.0.
   Points outside that range are skipped. Labels auto-stack so they don't overlap.
+  The island is black + gold and drawn per **district** (`utils/districts.js`: 25 districts from Natural Earth admin-1,
+  same projection; regenerate, don't hand-edit). Districts that contain the shown places light up (`districtAt()`).
   Clicking a photo card in the "Explore our beautiful island" mosaic spotlights that single place on this map.
   No map library and no API key are used.
 
@@ -197,10 +204,12 @@ Field names below are what the frontend expects (camelCase). Map snake_case colu
 | GET | `/guides` | `[{ id, name, role, bio, photo, languages[], specialties[], years, toursLed, rating, whatsapp }]` |
 | GET | `/testimonials` | `[{ id, name, country, message, rating, photo }]` |
 | GET | `/faqs` | `[{ id, question, answer }]` |
+| GET ✅ | `/activities` | `[{ id, slug, name }]` active activities in admin sort order (choices in the "Build your own journey" popup) |
+| POST ✅ | `/journey-requests` | "Build your own journey" popup (`components/journey/`). Body (snake_case): `arrival_date, arrival_time, departure_date, flexible_dates, arrival_airport, occasion, pace, men, women, children, child_ages[], accommodation, rooms, meal_plan, vehicle, guide_language, budget, dietary, accessibility, destination_ids[], activity_ids[], notes, name, email, phone, country, contact_method, referral, website` (honeypot). Option values are listed in `journeyOptions.js`. → 201, or 422 `{ errors }` (`child_ages.N` maps to that child's field), 429 when over the limit. 201 body: `{ data: { reference } }`, shown to the guest. Rules: `InquiryRules::website()`; option keys: `config/inquiries.php` |
 | POST | `/inquiries` | body: `{ name, email, phone, country, date, travellers, tour, tour_slug, message }` → 201. Validation errors → 422 `{ errors: { field: [msg] } }` (Laravel default, shown under the fields) |
 
 Remaining admin scope (roadmap in `docs/backend-architecture.md`): guides, testimonials, FAQs,
-settings page (contact details, stats, hero video upload), inquiries inbox (new/read/replied).
+settings page (contact details, stats, hero video upload), the short tour enquiry form (store it as an inquiry with `type=package`).
 CORS origins come from `FRONTEND_URLS` in `backend/.env`.
 
 ## Deployment

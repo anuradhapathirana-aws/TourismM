@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\City;
 use App\Models\Destination;
+use App\Models\Inquiry;
 use App\Models\User;
 use App\Support\Permissions;
 use Database\Seeders\RolePermissionSeeder;
@@ -35,8 +36,11 @@ final class AdminUiTest extends TestCase
     {
         $point = Destination::factory()->create();
         $city = $point->city;
+        $inquiry = Inquiry::factory()->create();
 
         $pages = [
+            '/inquiries', '/inquiries/create', "/inquiries/{$inquiry->id}", "/inquiries/{$inquiry->id}/edit",
+            '/guests', '/guests/create', "/guests/{$inquiry->guest_id}/edit",
             '', '/cities', '/cities/create', "/cities/{$city->slug}/edit",
             '/destinations', '/destinations/create', "/destinations/{$point->slug}/edit",
             '/tours', '/tours/create', '/tour-categories', '/tour-categories/create', '/activities', '/activities/create',

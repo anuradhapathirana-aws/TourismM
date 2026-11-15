@@ -25,6 +25,10 @@ TourCategory 1─* Tour 1─* TourDay *─* Destination   (ordered: pivot sort_o
                                      │  *─1 PlaceType
                                      └─ media (cover + gallery)   [polymorphic, reusable]
 User *─* Role *─* Permission                                     [spatie/permission]
+Guest 1─* Inquiry *─* Destination   (destination_inquiry, ordered: the guest's picks)
+                  *─* Activity      (activity_inquiry, ordered)
+                  1─* InquiryNote   (timeline: staff notes + status changes)
+                  *─1 User (assigned_to) · *─1 Tour (package inquiries, later)
 ```
 
 | Entity | Purpose | Managed by |
@@ -39,6 +43,9 @@ User *─* Role *─* Permission                                     [spatie/per
 | **TourDay** | One itinerary day: title, description, destination points **in visit order**, overnight city, hotel (free text), meals (B/L/D), activities, drive km/hours, photo. `day_number` = repeater order | Edited inside the tour |
 | **Activity** | Library of things to do (Jeep safari, White-water rafting …): name, description, related images, active, sort. Seeded with ~54 Sri Lankan activities (`ActivitySeeder`, also in production). Picked per itinerary day (pivot `activity_tour_day.sort_order`) by search; "+" on the tour form adds a new one | Admin CRUD (Tours → Activities) |
 | **TourPrice** | Price per person for a group-size range (`pax_from`–`pax_to`, empty = "and more") + vehicle. Ranges may not overlap. Website "From" = lowest row | Edited inside the tour |
+| **Guest** | A person who contacted us: name, email (unique, lower-case, how returning guests are recognised), phone, country, preferred contact, staff notes. Reused by every inquiry (later bookings, reviews) | Created by the website request or by staff · Admin CRUD (Inquiries → Guests) |
+| **Inquiry** | One request: trip dates/time/airport, occasion, pace, men/women/children + child ages, hotel standard, rooms, meals, vehicle, guide language, budget, dietary/accessibility needs, picked points + activities, wishes. Pipeline: reference, status, assigned staff, quoted total, source, closed_at | Website "Build your own journey" popup or staff · Admin (Inquiries → Tour inquiries) |
+| **InquiryNote** | Timeline row: who, status from → to, note. Written automatically on every status change; never edited | Added from the inquiry page |
 | **Destination** | A point on the map. Belongs to one City and one PlaceType, and has many Themes | Admin CRUD |
 
 Why this shape:
@@ -116,6 +123,18 @@ Indexes: `(status, is_featured)`, `(city_id, status)`, `(latitude, longitude)`.
 ### destination_theme (pivot)
 `destination_id` FK cascadeOnDelete · `theme_id` FK cascadeOnDelete · PK(destination_id, theme_id)
 
+### Inquiries module (2026-11-17)
+| table | key columns |
+|---|---|
+| guests | name(120) · email(190) **unique** · phone(30) · country(80) · preferred_contact · notes(text) · softDeletes |
+| inquiries | reference(20) unique · guest_id FK **restrictOnDelete** · type · source · status · assigned_to FK users nullOnDelete · tour_id FK nullOnDelete · arrival_date · arrival_time · departure_date · flexible_dates · arrival_airport · occasion · pace · men/women/children (tinyint) · child_ages(json) · accommodation · rooms · meal_plan · vehicle · guide_language · budget · dietary(300) · accessibility(300) · notes(text) · referral · quoted_amount(10,2) · closed_at · ip_address · user_agent · softDeletes. Indexes: (status, created_at), arrival_date, (assigned_to, status) |
+| destination_inquiry / activity_inquiry | PK(inquiry_id, x_id) · sort_order · both FKs cascadeOnDelete |
+| inquiry_notes | inquiry_id FK cascade · user_id FK nullOnDelete · status_from · status_to · body |
+
+Option values (airports, occasions, hotels, meals, vehicles, budgets, languages, referrals, contact methods) live in
+`config/inquiries.php`, not in tables: they are fixed choices with labels, validated with `Rule::in`. Move one to a
+table only if the owner needs to edit it in the admin. Pace reuses the `TourPace` enum.
+
 ## 4. Validation rules
 
 All rules live in one place per entity (`app/Support/Validation/*Rules.php`: City, Destination, Theme, PlaceType,
@@ -144,6 +163,8 @@ existence of related records and image checks. See CLAUDE.md → "Form validatio
 | gallery images | same file rules · max 12 files |
 | meta_title / meta_description | nullable · max 70 / 160 |
 | theme.side | required · enum `ThemeSide` (left/right) |
+| inquiry (website) | `InquiryRules::website()`: arrival today…+2 years · departure after arrival, ≤ 90 nights · ≥ 1 adult · 0–30 per type · one age (0–17) per child · rooms required unless no hotel · every option `in` config/inquiries.php · published points / active activities only (max 30 each) · notes ≤ 3000 · name 2–120 · email:rfc · phone 7–15 digits · country required |
+| inquiry (admin) | `InquiryRules::admin()`: same trip rules without the future-date limits + guest_id, status, source, assigned_to (active staff), quoted_amount 0–1 000 000 |
 | sort_order | integer · 0–65535 |
 
 Uploaded images are re-encoded through medialibrary conversions (`thumb` 400w, `card` 800w, `large` 1600w, WebP),
@@ -157,13 +178,13 @@ which also strips EXIF/GPS metadata from the generated files.
 | Authentication | Filament login, bcrypt passwords (min 12 chars, mixed case, numbers, not in breach list in production), **5 attempts/minute rate limit** (built-in), no public registration, no password reset unless mail is configured |
 | Panel access | `User::canAccessPanel()` → `is_active` **and** has a role |
 | Authorisation | spatie roles + permissions; one **Policy per model** (`cities.view`, `cities.create`, `cities.update`, `cities.delete`, `cities.restore`, …). Super Admin bypasses via `Gate::before` |
-| Roles | **super-admin** (everything incl. users, roles, provinces/districts) · **content-editor** (cities, destinations, tour categories, tours, activities, place types, themes) · **inquiry-manager** (future inquiries module) |
+| Roles | **super-admin** (everything incl. users, roles, provinces/districts) · **content-editor** (cities, destinations, tour categories, tours, activities, place types, themes) · **inquiry-manager** (inquiries, guests; timeline notes follow `inquiries.update`) |
 | Sessions | encrypted DB sessions, `secure` + `httponly` + `samesite=lax` cookies in production, CSRF on every admin form |
 | XSS | Rich text purified on save (allow-list). Plain fields are tags-stripped. React renders text, never raw HTML (except purified descriptions) |
 | SQL injection | Eloquent / query builder only, no raw SQL with user input |
 | Mass assignment | explicit `$fillable` on every model |
 | File uploads | MIME + extension + size + dimensions validated, random file names, stored on the `public` disk under `media/`, **no SVG uploads**, PHP execution denied in `storage/` via `.htaccess` |
-| Public API | **read-only GET**, rate-limited (60 req/min/IP), only `published`/`is_active` data, API Resources whitelist the fields (no internal columns leak), query filters validated (422 JSON), slugs regex-constrained, CORS limited to `FRONTEND_URLS` with GET only, short public caching + ETag on 200s (errors never cached) |
+| Public API | **read-only GET** except `POST /journey-requests` (own limiter: 5/min + 20/day per IP, honeypot field, rules above, saved in one transaction, IP + user agent kept for abuse checks only), rate-limited (60 req/min/IP), only `published`/`is_active` data, API Resources whitelist the fields (no internal columns leak), query filters validated (422 JSON), slugs regex-constrained, CORS limited to `FRONTEND_URLS` (GET, and POST for that one route), short public caching + ETag on 200s (errors never cached) |
 | CORS | only origins in `FRONTEND_URLS` |
 | Headers | `SecurityHeaders` middleware: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
 | Production | `APP_DEBUG=false`, `APP_ENV=production`, HTTPS forced, `php artisan optimize` |
@@ -213,7 +234,7 @@ without changes. Responses are wrapped in `{ "data": … }` (the frontend alread
 |---|---|
 | **1 (done)** | Auth + roles, Provinces/Districts (seeded), Cities, Place types, Themes, Destinations + images, public API |
 | 2 | Tours ✅ (categories, day-by-day itinerary linked to destinations and the activities library, group-size prices). Next: map picker in the admin form, Guides |
-| 3 | Inquiries inbox (POST `/inquiries`, status new/read/replied, email notification via queue), Testimonials, FAQs |
+| 3 | Custom tour inquiries ✅ (POST `/journey-requests`, guests, inbox tabs, timeline, assign, quick status, WhatsApp/email shortcuts). Next: email alert to staff on new inquiry (queued), package enquiry form as `type=package`, dashboard widget, Testimonials, FAQs |
 | 4 | Site settings (contact, stats, hero video upload), activity log/audit trail, sitemap |
 
 ## 9. Running it
