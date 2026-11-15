@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\PublicApiCache;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         $middleware->throttleApi('public-api');
+        $middleware->api(append: [PublicApiCache::class]);
         $middleware->trustProxies(at: env('TRUSTED_PROXIES') ? explode(',', env('TRUSTED_PROXIES')) : null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

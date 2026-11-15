@@ -39,6 +39,7 @@ final class AdminUiTest extends TestCase
         $pages = [
             '', '/cities', '/cities/create', "/cities/{$city->slug}/edit",
             '/destinations', '/destinations/create', "/destinations/{$point->slug}/edit",
+            '/tours', '/tours/create', '/tour-categories', '/tour-categories/create', '/activities', '/activities/create',
             '/themes', '/themes/create', '/place-types', '/place-types/create',
             '/districts', '/districts/create', '/users', '/users/create',
         ];

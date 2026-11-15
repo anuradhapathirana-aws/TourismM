@@ -34,7 +34,7 @@ export default function Footer() {
           <ul>
             <li><Link to="/#about">About Us</Link></li>
             <li><Link to="/#destinations">Destinations</Link></li>
-            <li><Link to="/#tours">Tour Packages</Link></li>
+            <li><Link to="/tours">Tour Packages</Link></li>
             <li><Link to="/#guides">Meet Your Guide</Link></li>
             {site.sections?.faq !== false && <li><Link to="/#faq">FAQ</Link></li>}
           </ul>

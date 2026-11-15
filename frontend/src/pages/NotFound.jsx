@@ -11,7 +11,7 @@ export default function NotFound({ title = 'Page not found' }) {
         <p className="section-sub left">The page you are looking for may have moved. Let’s get you back on the road.</p>
         <div className="hero-actions">
           <Link className="btn btn-gold" to="/">Back to home</Link>
-          <Link className="btn btn-ghost" to="/#tours">Browse tours</Link>
+          <Link className="btn btn-ghost" to="/tours">Browse tours</Link>
         </div>
       </div>
     </section>

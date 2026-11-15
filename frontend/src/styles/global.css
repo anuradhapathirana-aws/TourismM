@@ -78,7 +78,7 @@ p { margin: 0 0 1em; }
 .eyebrow-line { width: 34px; height: 1px; background: currentColor; opacity: .7; }
 .section-title { font-size: clamp(2.1rem, 4.2vw, 3.4rem); letter-spacing: -.01em; }
 .section-title.sm { font-size: 1.9rem; margin-top: 1.6em; }
-.section-title em, .hero-title em {
+.section-title em, .hero-title em, .page-hero h1 em {
   font-style: italic; font-weight: 500;
   background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
@@ -434,6 +434,11 @@ p { margin: 0 0 1em; }
 .alert { padding: 14px 16px; border-radius: var(--radius-sm); margin-bottom: 18px; font-size: 15px; }
 .alert-ok { background: rgba(80,160,100,.15); border: 1px solid rgba(80,160,100,.5); color: #bfe8c8; }
 .alert-err { background: rgba(200,80,80,.15); border: 1px solid rgba(200,80,80,.5); color: #f3c2c2; }
+
+/* ---------- Tours list page + home "Show more" ---------- */
+.tours-more { margin-top: 48px; }
+.tours-more + .muted-note { margin-top: 28px; }
+.page-hero-lead { color: var(--on-dark-muted); font-size: 1.08rem; max-width: 620px; margin: 18px 0 0; }
 
 /* ---------- Tour detail page ---------- */
 .page-hero {

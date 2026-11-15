@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\TourResource\Pages;
+
+use App\Filament\Resources\TourResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+final class ListTours extends ListRecords
+{
+    protected static string $resource = TourResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\CreateAction::make()->label('Plan a tour')];
+    }
+}

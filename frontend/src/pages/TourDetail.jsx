@@ -3,7 +3,7 @@ import { useApi } from '@/hooks/useApi'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useSite } from '@/context/SiteContext'
 import { getTour, getTours } from '@/services/api'
-import { money } from '@/utils/format'
+import { money, tourCategoryLabel, tourCategorySlug } from '@/utils/format'
 import InquiryForm from '@/components/ui/InquiryForm'
 import TourCard from '@/components/ui/TourCard'
 import PageLoader from '@/components/ui/PageLoader'
@@ -11,7 +11,7 @@ import NotFound from './NotFound'
 
 export default function TourDetail() {
   const { slug } = useParams()
-  const { currency } = useSite()
+  const site = useSite()
   const { data: tour, loading, error } = useApi(() => getTour(slug), [slug])
   const { data: all } = useApi(getTours)
   usePageTitle(tour?.title)
@@ -29,25 +29,29 @@ export default function TourDetail() {
   }
   if (!tour) return <NotFound title="Tour not found" />
 
+  const currency = tour.currency || site.currency
+  const from = tour.price != null ? money(tour.price, currency) : 'On request'
+  const sameCategory = (t) => Number(tourCategorySlug(t) === tourCategorySlug(tour))
+
   const related = (all || [])
     .filter((t) => t.slug !== tour.slug)
-    .sort((a, b) => Number(b.category === tour.category) - Number(a.category === tour.category))
+    .sort((a, b) => sameCategory(b) - sameCategory(a))
     .slice(0, 3)
 
   return (
     <>
-      <section className="page-hero" style={{ '--hero-img': `url('${tour.image}')` }}>
+      <section className="page-hero" style={{ '--hero-img': `url('${tour.imageLarge || tour.image}')` }}>
         <div className="container">
           <nav className="crumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link> / <Link to="/#tours">Tours</Link> / <span aria-current="page">{tour.title}</span>
+            <Link to="/">Home</Link> / <Link to="/tours">Tours</Link> / <span aria-current="page">{tour.title}</span>
           </nav>
-          <span className="tag static">{tour.category}</span>
+          <span className="tag static">{tourCategoryLabel(tour)}</span>
           <h1>{tour.title}</h1>
           <ul className="tour-facts">
             <li><i className="bi bi-clock" aria-hidden="true" />{tour.duration}</li>
             <li><i className="bi bi-car-front" aria-hidden="true" />Private vehicle</li>
             <li><i className="bi bi-person-badge" aria-hidden="true" />Chauffeur-guide</li>
-            <li><i className="bi bi-tag" aria-hidden="true" />From {money(tour.price, currency)} pp</li>
+            <li><i className="bi bi-tag" aria-hidden="true" />From {from}{tour.price != null && ' pp'}</li>
           </ul>
         </div>
       </section>
@@ -99,7 +103,7 @@ export default function TourDetail() {
             <div className="side-card">
               <div className="side-price">
                 <small>From</small>
-                <strong>{money(tour.price, currency)}</strong>
+                <strong>{from}</strong>
                 <small>per person</small>
               </div>
               <h2 className="side-title">Enquire about this tour</h2>

@@ -49,3 +49,13 @@
 /* Modals / slide-overs */
 .fi-body .fi-modal-header { padding-block: .875rem; }
 .fi-body .fi-modal-heading { font-size: 1.125rem; }
+
+/* Tour itinerary: each repeater item header reads "Day N · <title>" and renumbers instantly on drag/clone/delete. */
+.lg-itinerary { counter-reset: lg-day; }
+.lg-itinerary .fi-fo-repeater-item { counter-increment: lg-day; }
+.lg-itinerary .fi-fo-repeater-item-header h4::before {
+    content: "Day " counter(lg-day) " · ";
+    color: rgb(var(--primary-600));
+    font-weight: 600;
+}
+.dark .lg-itinerary .fi-fo-repeater-item-header h4::before { color: rgb(var(--primary-400)); }

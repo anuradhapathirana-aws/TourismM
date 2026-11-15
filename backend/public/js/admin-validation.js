@@ -42,7 +42,8 @@
 
         if (wait && sibling(el, wait)?.value === '') return '';
         if (el.validity?.badInput) return `${name} must be a number.`;
-        if (el.required && text === '') return `${name} is required.`;
+        // data-lg-required: Filament omits `required` on fields inside tabs/collapsibles (see AdminUi)
+        if ((el.required || el.dataset.lgRequired === 'true') && text === '') return `${name} is required.`;
         if (text === '') return '';
 
         const length = [...value].length;
@@ -175,9 +176,14 @@
 
         e.preventDefault();
         e.stopImmediatePropagation();
+        // Prefer a visible field; otherwise open the tab / collapsed section / repeater item that hides it
+        // (Filament containers listen for a bubbling "expand" event), then focus once Alpine has shown it.
         const first = invalid.find((el) => el.offsetParent !== null) || invalid[0];
-        first.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        first.focus({ preventScroll: true });
+        if (first.offsetParent === null) first.dispatchEvent(new CustomEvent('expand', { bubbles: true }));
+        requestAnimationFrame(() => {
+            first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            first.focus({ preventScroll: true });
+        });
     }, true);
 
     const hookLivewire = () => window.Livewire?.hook?.('commit', ({ succeed }) => succeed(() => requestAnimationFrame(scan)));

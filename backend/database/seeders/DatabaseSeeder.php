@@ -14,11 +14,13 @@ final class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             ProvinceDistrictSeeder::class,
             PlaceTypeThemeSeeder::class,
+            TourCategorySeeder::class,
+            ActivitySeeder::class,
         ]);
 
         // Sample content only outside production
         if (! app()->isProduction()) {
-            $this->call(DemoLocationSeeder::class);
+            $this->call([DemoLocationSeeder::class, DemoTourSeeder::class]);
         }
     }
 }

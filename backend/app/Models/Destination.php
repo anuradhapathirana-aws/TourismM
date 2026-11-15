@@ -72,6 +72,12 @@ final class Destination extends Model implements HasMedia
         return $this->belongsToMany(Theme::class);
     }
 
+    /** Itinerary days that visit this point (→ "tours that visit here"). */
+    public function tourDays(): BelongsToMany
+    {
+        return $this->belongsToMany(TourDay::class)->withPivot('sort_order');
+    }
+
     /** Published, inside an active city: what the public website may see. */
     public function scopePublic(Builder $query): Builder
     {

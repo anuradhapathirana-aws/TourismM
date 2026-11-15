@@ -9,6 +9,7 @@ use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Actions as TableActions;
 use Filament\Tables\Columns\ImageColumn;
@@ -83,6 +84,15 @@ final class AdminUi
                 'data-lg-pattern-message' => $message,
             ], merge: true);
         });
+
+        // Filament drops the HTML `required` attribute inside tabs / collapsible containers ("concealed" fields),
+        // so the live check reads this flag instead. Later ->extraInputAttributes() calls must use merge: true.
+        foreach ([TextInput::class, Textarea::class] as $class) {
+            $class::configureUsing(fn (Field $field) => $field->extraInputAttributes(
+                fn (Field $component): array => $component->isRequired() ? ['data-lg-required' => 'true'] : [],
+                merge: true,
+            ));
+        }
 
         Section::configureUsing(fn (Section $section) => $section->compact());
 

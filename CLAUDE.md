@@ -9,11 +9,11 @@ Marketing website for **Lean Global Travel & Tourism**, a Sri Lanka private-tour
 | Part | Status | Location |
 |------|--------|----------|
 | Frontend: React 19 + Vite 6 SPA | **Built** | `frontend/` |
-| Backend + admin: Laravel 12 API + Filament 3 admin | **Phase 1 built** (Locations: cities, destination points, themes, place types, users/roles) | `backend/` |
+| Backend + admin: Laravel 12 API + Filament 3 admin | **Phase 1 + Tours built** (tours + tour categories + activities library; locations: cities, destination points, map themes, place types; users/roles) | `backend/` |
 
 **Backend architecture, schema, validation, security and roadmap: [`docs/backend-architecture.md`](docs/backend-architecture.md).** Read it before backend work.
 The frontend fetches only the modules listed in `LIVE_MODULES` (`frontend/src/services/api.js`) from the API.
-Everything else (tours, guides, testimonials, FAQs, settings, enquiries) still uses mock data until its backend module is built.
+Everything else (guides, testimonials, FAQs, settings, enquiries) still uses mock data until its backend module is built.
 
 ### Backend essentials
 - **Private admin:** served only at `/{ADMIN_PATH}` (`backend/.env`). Never link to it from the website, never use `/admin`.
@@ -24,7 +24,8 @@ Everything else (tours, guides, testimonials, FAQs, settings, enquiries) still u
   Never write field rules in only one place. Coordinates are limited to Sri Lanka by `config/locations.php`.
 - **Sanitising:** models use `SanitizesInput` (`$plainText` strips tags, `$richText` purified by the "rich" allow-list in `config/purify.php`).
 - **Images:** spatie medialibrary via `InteractsWithImages` (thumb/card/large WebP). Upload rules in `CommonRules::image()`: no SVG, max 5 MB, min 800×500.
-- **Public API:** read-only `GET /api/v1/*`, 60 req/min. Only `published` points in active cities.
+- **Public API:** read-only `GET /api/v1/*`, 60 req/min. Only `published` points in active cities, `published` tours in active categories.
+  Successful GETs send `Cache-Control: public, max-age=60` + `ETag` (304 on repeat) via `PublicApiCache` (`API_CACHE_SECONDS`, 0 = off).
 - **Queue:** `QUEUE_CONNECTION=database`. The 1600px `large` image conversion is queued, so run `php artisan queue:work` (cron/Supervisor in production).
 - **Filament gotcha:** closures get their arguments injected by *name*. Use `$query`, `$record`, `$get`, `$state`, never `$q` or `$d`.
 - **New module checklist:** migration → model (+ traits) → `*Rules` → Policy + `Permissions::RESOURCES` → seeder → Filament Resource (follow "Admin UI" below) → API Resource/controller/route → tests → add to `LIVE_MODULES`.
@@ -51,7 +52,9 @@ The owner wants admin pages to fit on one screen with as little scrolling as pos
    so **always mirror the server rule on the field**: `->required()`, `->minLength()`, `->maxLength()`,
    `->minValue()/->maxValue()`, `->integer()`/`->numeric()`, `->email()`, and `->livePattern($regex, 'message')` for every
    regex rule. Fields with `maxLength ≥ 50` get a "n / max" counter automatically. Password pairs: `data-lg-wait-for` on the
-   password and `data-lg-match` on the confirmation (see `UserResource`). Selects, rich text, uploads and uniqueness are
+   password and `data-lg-match` on the confirmation (see `UserResource`). Filament drops `required` inside tabs/collapsibles, so
+   `AdminUi` adds `data-lg-required` to every required TextInput/Textarea: call `->extraInputAttributes([...], merge: true)` (always
+   `merge: true`, or that flag is lost). Selects, rich text, uploads and uniqueness are
    checked by the server only.
 2. **Server (authoritative):** every field also gets `->rules(FormRules::for($rules, 'field'))` from its
    `app/Support/Validation/*Rules.php` class (and `->nestedRecursiveRules()` for array items). Never trust the browser layer.
@@ -95,7 +98,7 @@ components/layout/       Header, Footer, Layout, ScrollManager, FloatingButtons
 components/ui/           SectionHeading, TourCard, InquiryForm, PageLoader
 sections/home/           one file per home-page section (Hero, About, Destinations, WhyUs,
                          MeetGuides, DestinationMap, Tours, Testimonials, Faq, Contact)
-pages/                   Home, TourDetail (/tours/:slug), NotFound
+pages/                   Home, Tours (/tours, ?category=slug), TourDetail (/tours/:slug), NotFound
 styles/global.css        all styles, design tokens in :root
 assets/images/           LG.jpeg (original logo), LG-crop.jpg (used in header/footer), LG-mark.jpg
 ```
@@ -186,14 +189,15 @@ Field names below are what the frontend expects (camelCase). Map snake_case colu
 | GET ✅ | `/cities`, `/cities/{slug}` | cities with `destinationsCount`; the detail endpoint includes `destinations[]` |
 | GET ✅ | `/themes` | `[{ id, slug, title, image, side }]` (`side`: `"left"`/`"right"` column on desktop; 6 themes fit the layout best) |
 | GET ✅ | `/place-types` | `[{ id, slug, name, icon }]` |
-| GET | `/tours` | `[{ id, slug, title, category, duration, price, featured, image, summary, highlights[], itinerary[{title,details}], inclusions[] }]` |
-| GET | `/tours/{slug}` | single tour (404 → frontend shows "Tour not found") |
+| GET ✅ | `/tour-categories` | `[{ id, slug, name, label, icon, summary, image, thumb, toursCount }]`. `label` = name without a trailing "Tours" (website tabs). How trips are classified (Beach Tours, Cultural & Heritage…). Separate from map themes |
+| GET ✅ | `/tours` | `[{ id, slug, title, category, categorySlug, categoryLabel, duration, days, price, currency, featured, image, thumb, summary, highlights[], itinerary[{title,details}], inclusions[] }]`. `duration` = "5 Days / 4 Nights" from the day count; `price` = lowest per-person price. Filters: `?category=&featured=1`. Home "Discover Sri Lanka" shows `featured` tours (first 6 if none) + "Show more tours" → `/tours` page (all tours; the header "Tours" menu links there too). Tabs follow the `/tour-categories` order |
+| GET ✅ | `/tours/{slug}` | the above + `content`, `exclusions[]`, `pace`, `groupMin`, `groupMax`, `startPoint`, `endPoint`, `bestMonths[]`, `prices[{paxFrom,paxTo,pax,vehicle,pricePerPerson}]`, `gallery[]`, and a full `itinerary[{day,title,details,overnight{name,slug},hotel,meals[],activities[{id,slug,name,description,image,thumb}],distanceKm,driveHours,image,destinations[{id,slug,name,lat,lng,thumb}]}]` (published points, active activities only). 404 → "Tour not found" |
 | GET | `/guides` | `[{ id, name, role, bio, photo, languages[], specialties[], years, toursLed, rating, whatsapp }]` |
 | GET | `/testimonials` | `[{ id, name, country, message, rating, photo }]` |
 | GET | `/faqs` | `[{ id, question, answer }]` |
 | POST | `/inquiries` | body: `{ name, email, phone, country, date, travellers, tour, tour_slug, message }` → 201. Validation errors → 422 `{ errors: { field: [msg] } }` (Laravel default, shown under the fields) |
 
-Remaining admin scope (roadmap in `docs/backend-architecture.md`): tours, guides, testimonials, FAQs,
+Remaining admin scope (roadmap in `docs/backend-architecture.md`): guides, testimonials, FAQs,
 settings page (contact details, stats, hero video upload), inquiries inbox (new/read/replied).
 CORS origins come from `FRONTEND_URLS` in `backend/.env`.
 

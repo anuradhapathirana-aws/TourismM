@@ -7,7 +7,7 @@ import logo from '@/assets/images/LG-crop.jpg'
 const NAV = [
   { to: '/#about', label: 'About' },
   { to: '/#destinations', label: 'Destinations' },
-  { to: '/#tours', label: 'Tours' },
+  { to: '/tours', label: 'Tours' },
   { to: '/#guides', label: 'Our Guides' },
   { to: '/#reviews', label: 'Reviews' },
   { to: '/#faq', label: 'FAQ', section: 'faq' },

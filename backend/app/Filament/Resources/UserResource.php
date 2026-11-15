@@ -68,7 +68,7 @@ final class UserResource extends Resource
                             ."At least {$min} characters".(app()->isProduction() ? ' with upper and lower case, numbers and symbols.' : '.'))
                         ->confirmed()
                         ->validationMessages(['confirmed' => 'The passwords do not match.'])
-                        ->extraInputAttributes(['data-lg-wait-for' => 'password_confirmation'])
+                        ->extraInputAttributes(['data-lg-wait-for' => 'password_confirmation'], merge: true)
                         ->span('md'),
                     TextInput::make('password_confirmation')
                         ->label('Confirm password')
@@ -76,7 +76,7 @@ final class UserResource extends Resource
                         ->revealable()
                         ->required(fn (string $operation) => $operation === 'create')
                         ->dehydrated(false)
-                        ->extraInputAttributes(['data-lg-match' => 'password'])
+                        ->extraInputAttributes(['data-lg-match' => 'password'], merge: true)
                         ->span('md'),
                     Toggle::make('is_active')->label('Active')->default(true)
                         ->rules(FormRules::for($rules, 'is_active'))

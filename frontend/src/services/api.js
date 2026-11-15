@@ -13,6 +13,7 @@ import { guides } from '@/data/guides'
 import { testimonials } from '@/data/testimonials'
 import { faqs } from '@/data/faqs'
 import { themes } from '@/data/themes'
+import { tourCategoryLabel, tourCategorySlug, unique } from '@/utils/format'
 
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const apiConfigured = API_URL !== ''
@@ -22,25 +23,49 @@ const apiConfigured = API_URL !== ''
  * so the site works while the backend is built module by module.
  * Add a name here when its endpoint goes live (see docs/backend-architecture.md → Roadmap).
  */
-const LIVE_MODULES = new Set(['destinations', 'themes'])
+const LIVE_MODULES = new Set(['destinations', 'themes', 'tours', 'tour-categories'])
 
 /** True when enquiries are POSTed to the API (otherwise the form hands them to WhatsApp). */
 export const hasBackend = apiConfigured && LIVE_MODULES.has('inquiries')
 
 const unwrap = (json) => (json && typeof json === 'object' && 'data' in json ? json.data : json)
 
-async function get(module, path, fallback) {
-  if (!apiConfigured || !LIVE_MODULES.has(module)) return structuredClone(fallback)
+/**
+ * Several components ask for the same list on one page (e.g. header/footer + section),
+ * so identical GETs share one request for a short time. Failed requests are not kept.
+ */
+const SHARE_MS = 60_000
+const inflight = new Map()
+
+async function request(path) {
   const res = await fetch(`${API_URL}${path}`, { headers: { Accept: 'application/json' } })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`Request failed (${res.status})`)
   return unwrap(await res.json())
 }
 
+function get(module, path, fallback) {
+  if (!apiConfigured || !LIVE_MODULES.has(module)) return Promise.resolve(structuredClone(fallback))
+  const hit = inflight.get(path)
+  if (hit && Date.now() - hit.at < SHARE_MS) return hit.promise.then((data) => structuredClone(data))
+  const promise = request(path)
+  inflight.set(path, { promise, at: Date.now() })
+  promise.catch(() => inflight.delete(path))
+  return promise.then((data) => structuredClone(data))
+}
+
+/** Mock categories in the same shape as GET /tour-categories (order of first appearance). */
+const mockTourCategories = () =>
+  unique(tours.map(tourCategorySlug)).map((slug, i) => {
+    const t = tours.find((x) => tourCategorySlug(x) === slug)
+    return { id: i + 1, slug, name: t.category, label: tourCategoryLabel(t), toursCount: tours.filter((x) => tourCategorySlug(x) === slug).length }
+  })
+
 export const getSite = () => get('settings', '/settings', site)
 export const getDestinations = () => get('destinations', '/destinations', destinations)
 export const getThemes = () => get('themes', '/themes', themes)
 export const getTours = () => get('tours', '/tours', tours)
+export const getTourCategories = () => get('tour-categories', '/tour-categories', mockTourCategories())
 export const getTour = (slug) =>
   get('tours', `/tours/${encodeURIComponent(slug)}`, tours.find((t) => t.slug === slug) ?? null)
 export const getGuides = () => get('guides', '/guides', guides)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApi } from '@/hooks/useApi'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { useSite } from '@/context/SiteContext'
-import { getDestinations, getFaqs, getGuides, getTestimonials, getThemes, getTours } from '@/services/api'
+import { getDestinations, getFaqs, getGuides, getTestimonials, getThemes, getTourCategories, getTours } from '@/services/api'
 import Hero from '@/sections/home/Hero'
 import About from '@/sections/home/About'
 import Destinations from '@/sections/home/Destinations'
@@ -20,6 +20,7 @@ export default function Home() {
   const { data: destinations } = useApi(getDestinations)
   const { data: themes } = useApi(getThemes)
   const { data: tours } = useApi(getTours)
+  const { data: tourCategories } = useApi(getTourCategories)
   const { data: guides } = useApi(getGuides)
   const { data: testimonials } = useApi(getTestimonials)
   const { data: faqs } = useApi(getFaqs)
@@ -39,7 +40,7 @@ export default function Home() {
       <WhyUs />
       <MeetGuides guides={guides || []} />
       <DestinationMap themes={themes || []} destinations={destinations || []} selected={selected} />
-      <Tours tours={tours || []} />
+      <Tours tours={tours || []} categories={tourCategories || []} />
       <Testimonials items={testimonials || []} />
       {site.sections?.faq !== false && <Faq items={faqs || []} />}
       <Contact tours={tours || []} />

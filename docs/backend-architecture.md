@@ -19,6 +19,9 @@ Stack: Laravel 12 · PHP 8.2 · MySQL 8 · Filament 3 (admin) · spatie/laravel-
 
 ```
 Province 1─* District 1─* City 1─* Destination *─* Theme
+TourCategory 1─* Tour 1─* TourDay *─* Destination   (ordered: pivot sort_order = visit order)
+                  Tour 1─* TourPrice                 (group-size price table)
+                  TourDay *─1 City                   (overnight)
                                      │  *─1 PlaceType
                                      └─ media (cover + gallery)   [polymorphic, reusable]
 User *─* Role *─* Permission                                     [spatie/permission]
@@ -31,11 +34,18 @@ User *─* Role *─* Permission                                     [spatie/per
 | **City** | e.g. Anuradhapura, Ella, Kandy. Has its own cover image, description and centre lat/lng | Admin CRUD |
 | **PlaceType** | Kind of point: Waterfall, Temple, Beach, National Park, Viewpoint… | Admin CRUD |
 | **Theme** | Map filter cards (Popular Beaches, Wildlife & Nature…). `side` = left/right column | Admin CRUD |
+| **TourCategory** | How trips are classified (Beach Tours, Cultural & Heritage Tours…). Name, slug, icon, short description, cover image. One category has many tours | Admin CRUD |
+| **Tour** | A sellable trip ("7 Days Cultural Triangle"). Exactly one category. Overview (summary, highlights, pace, group size, start/end, best months), cover + gallery, inclusions/exclusions, SEO, draft/published, featured. **Duration is not stored**: it is the number of days | Admin CRUD ("Plan a tour") |
+| **TourDay** | One itinerary day: title, description, destination points **in visit order**, overnight city, hotel (free text), meals (B/L/D), activities, drive km/hours, photo. `day_number` = repeater order | Edited inside the tour |
+| **Activity** | Library of things to do (Jeep safari, White-water rafting …): name, description, related images, active, sort. Seeded with ~54 Sri Lankan activities (`ActivitySeeder`, also in production). Picked per itinerary day (pivot `activity_tour_day.sort_order`) by search; "+" on the tour form adds a new one | Admin CRUD (Tours → Activities) |
+| **TourPrice** | Price per person for a group-size range (`pax_from`–`pax_to`, empty = "and more") + vehicle. Ranges may not overlap. Website "From" = lowest row | Edited inside the tour |
 | **Destination** | A point on the map. Belongs to one City and one PlaceType, and has many Themes | Admin CRUD |
 
 Why this shape:
 - **City → Destination (1:N)** matches the brief directly. The city gives each point its context (breadcrumbs,
   "more in Ella", city pages later).
+- **Tours pick destination points per day** (pivot `destination_tour_day` with `sort_order`), so "tours that visit Sigiriya" is one query (`Destination::tourDays`). Categories do not link to points directly. Map themes stay separate and only drive the website map.
+- **Publishing a tour** needs a cover image, at least one day and one price row (form rules + the list's publish action). **Duplicate** deep-copies days, points, prices and photos as a new draft (7-day → 10-day tours).
 - **Destination ↔ Theme (N:N)** allows one point under several cards (Arugam Bay = Beaches + Adventure).
 - **PlaceType** is a lookup table, not a hard-coded enum, so the admin can add types without a deploy.
 - **Media is polymorphic** (`media` table via medialibrary). Tours, guides and others reuse it later with no new tables.
@@ -147,13 +157,13 @@ which also strips EXIF/GPS metadata from the generated files.
 | Authentication | Filament login, bcrypt passwords (min 12 chars, mixed case, numbers, not in breach list in production), **5 attempts/minute rate limit** (built-in), no public registration, no password reset unless mail is configured |
 | Panel access | `User::canAccessPanel()` → `is_active` **and** has a role |
 | Authorisation | spatie roles + permissions; one **Policy per model** (`cities.view`, `cities.create`, `cities.update`, `cities.delete`, `cities.restore`, …). Super Admin bypasses via `Gate::before` |
-| Roles | **super-admin** (everything incl. users, roles, provinces/districts) · **content-editor** (cities, destinations, place types, themes) · **inquiry-manager** (future inquiries module) |
+| Roles | **super-admin** (everything incl. users, roles, provinces/districts) · **content-editor** (cities, destinations, tour categories, tours, activities, place types, themes) · **inquiry-manager** (future inquiries module) |
 | Sessions | encrypted DB sessions, `secure` + `httponly` + `samesite=lax` cookies in production, CSRF on every admin form |
 | XSS | Rich text purified on save (allow-list). Plain fields are tags-stripped. React renders text, never raw HTML (except purified descriptions) |
 | SQL injection | Eloquent / query builder only, no raw SQL with user input |
 | Mass assignment | explicit `$fillable` on every model |
 | File uploads | MIME + extension + size + dimensions validated, random file names, stored on the `public` disk under `media/`, **no SVG uploads**, PHP execution denied in `storage/` via `.htaccess` |
-| Public API | **read-only GET**, rate-limited (60 req/min/IP), only `published`/`is_active` data, API Resources whitelist the fields (no internal columns leak) |
+| Public API | **read-only GET**, rate-limited (60 req/min/IP), only `published`/`is_active` data, API Resources whitelist the fields (no internal columns leak), query filters validated (422 JSON), slugs regex-constrained, CORS limited to `FRONTEND_URLS` with GET only, short public caching + ETag on 200s (errors never cached) |
 | CORS | only origins in `FRONTEND_URLS` |
 | Headers | `SecurityHeaders` middleware: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
 | Production | `APP_DEBUG=false`, `APP_ENV=production`, HTTPS forced, `php artisan optimize` |
@@ -166,7 +176,7 @@ backend/app/
 ├─ Models/                Province, District, City, PlaceType, Theme, Destination, User
 ├─ Models/Concerns/       HasSlug (auto slug), Sanitizes (purify/strip on save)
 ├─ Policies/              one per model (permission-based)
-├─ Support/Validation/    CityRules, DestinationRules, ThemeRules, PlaceTypeRules, CommonRules (geo, image)
+├─ Support/Validation/    CityRules, DestinationRules, TourCategoryRules, TourRules (tour + dayRules + priceRules + no-overlap check), ActivityRules, ThemeRules, PlaceTypeRules, CommonRules (geo, image)
 ├─ Services/              DestinationQuery (filters + eager loading for the API)
 ├─ Http/Controllers/Api/V1/  read-only controllers (thin: call service → Resource)
 ├─ Http/Resources/V1/     CityResource, DestinationResource, ThemeResource, PlaceTypeResource
@@ -191,6 +201,8 @@ Base: `{APP_URL}/api/v1`. The frontend sets `VITE_API_URL=http://localhost:8000/
 | GET | `/cities` | `[{ id, slug, name, district, province, lat, lng, image, destinationsCount }]` |
 | GET | `/cities/{slug}` | city + its published destinations |
 | GET | `/place-types` | `[{ id, slug, name, icon }]` |
+| GET | `/tour-categories` | `[{ id, slug, name, label, icon, summary, image, thumb, toursCount }]` (active, sorted; count = published tours) |
+| GET | `/tours`, `/tours/{slug}` | see CLAUDE.md → API contract. Only published tours in an active category |
 
 `category` = PlaceType name and `image` = cover `card` (800w) URL, so the existing React map and mosaic work
 without changes. Responses are wrapped in `{ "data": … }` (the frontend already unwraps it).
@@ -200,7 +212,7 @@ without changes. Responses are wrapped in `{ "data": … }` (the frontend alread
 | Phase | Modules |
 |---|---|
 | **1 (done)** | Auth + roles, Provinces/Districts (seeded), Cities, Place types, Themes, Destinations + images, public API |
-| 2 | Map picker in the admin form (click to set lat/lng), Tours (+ itinerary days linked to destinations), Guides |
+| 2 | Tours ✅ (categories, day-by-day itinerary linked to destinations and the activities library, group-size prices). Next: map picker in the admin form, Guides |
 | 3 | Inquiries inbox (POST `/inquiries`, status new/read/replied, email notification via queue), Testimonials, FAQs |
 | 4 | Site settings (contact, stats, hero video upload), activity log/audit trail, sitemap |
 
