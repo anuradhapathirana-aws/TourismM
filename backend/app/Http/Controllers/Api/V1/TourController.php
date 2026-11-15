@@ -48,7 +48,7 @@ final class TourController extends Controller
                 'days.media',
                 'days.activities' => fn ($query) => $query->active()->with('media'), // inactive/deleted hidden
                 // only points the public may see; order by visit order
-                'days.destinations' => fn ($query) => $query->public()->with('media'),
+                'days.destinations' => fn ($query) => $query->public()->with(['media', 'placeType:id,name', 'city:id,name']),
             ])
             ->where('slug', $slug)
             ->first() ?? abort(404, 'Tour not found.');

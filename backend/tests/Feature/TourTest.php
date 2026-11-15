@@ -208,7 +208,11 @@ final class TourTest extends TestCase
             ->assertJsonPath('data.prices.1.pax', '3+')
             ->assertJsonPath('data.itinerary.0.day', 1)
             ->assertJsonCount(1, 'data.itinerary.0.destinations') // draft point hidden
-            ->assertJsonPath('data.itinerary.0.destinations.0.name', 'Sigiriya Lion Rock');
+            ->assertJsonPath('data.itinerary.0.destinations.0.name', 'Sigiriya Lion Rock')
+            ->assertJsonPath('data.itinerary.0.destinations.0.description', $published->summary)
+            ->assertJsonPath('data.itinerary.0.destinations.0.city', $published->city->name)
+            // fields the route-map popup uses
+            ->assertJsonStructure(['data' => ['itinerary' => [['destinations' => [['id', 'slug', 'name', 'lat', 'lng', 'category', 'city', 'description', 'image', 'thumb']]]]]]);
 
         $this->getJson('/api/v1/tours/draft-tour')->assertNotFound();
         $this->getJson('/api/v1/tours/hidden-category')->assertNotFound();

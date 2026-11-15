@@ -409,8 +409,6 @@ p { margin: 0 0 1em; }
 /* ---------- Forms ---------- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; margin-bottom: 20px; }
 .form-grid .span-2 { grid-column: span 2; }
-.form-grid.single { grid-template-columns: 1fr; }
-.form-grid.single .span-2 { grid-column: auto; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .inquiry-form label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--on-dark-muted); }
 .req { color: var(--gold); }
@@ -451,7 +449,14 @@ p { margin: 0 0 1em; }
 .crumbs a:hover { color: var(--gold-light); }
 .tour-facts { display: flex; flex-wrap: wrap; gap: 12px 28px; list-style: none; padding: 0; margin: 24px 0 0; color: #ddd3c4; }
 .tour-facts i { color: var(--gold); margin-right: 8px; }
-.tour-layout { display: grid; grid-template-columns: 1fr 420px; gap: 60px; align-items: start; }
+/* Enquiry card straddles the hero edge: half over the image, half over the cream section; the route map sits below it.
+   --lift = half the card height (set by TourDetail via ResizeObserver; 300px until measured). */
+.tour-top { --side-w: 440px; --side-gap: 56px; --body-pad: 64px; --lift: 300px; }
+.tour-hero { padding-bottom: 96px; min-height: calc(var(--lift) + var(--header-h) + 140px); display: flex; align-items: flex-end; }
+.tour-hero .container { padding-right: calc(var(--side-w) + var(--side-gap)); }
+.tour-hero h1 { font-size: clamp(2.4rem, 4.6vw, 4rem); }
+.section.tour-details { padding-top: var(--body-pad); }
+.tour-layout { display: grid; grid-template-columns: 1fr var(--side-w, 420px); gap: var(--side-gap, 60px); align-items: start; }
 .tour-main .section-title.sm:first-child { margin-top: 0; }
 .itinerary { list-style: none; padding: 0; margin: 0; position: relative; }
 .itinerary::before { content: ""; position: absolute; left: 34px; top: 10px; bottom: 10px; width: 1px; background: #d8c9b0; }
@@ -459,12 +464,113 @@ p { margin: 0 0 1em; }
 .itinerary .day { flex: none; width: 70px; height: 34px; display: grid; place-items: center; border-radius: 999px; background: var(--ink); color: var(--gold-light); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; position: relative; }
 .itinerary h3 { font-size: 1.4rem; margin: 2px 0 4px; }
 .itinerary p { color: var(--text-muted); margin: 0; }
-.tour-side { position: sticky; top: 96px; }
-.side-card { background: var(--ink); color: var(--on-dark); border-radius: 24px; padding: 32px; box-shadow: var(--shadow); }
-.side-title { font-size: 1.6rem; margin: 18px 0; }
-.side-price { padding-bottom: 18px; border-bottom: 1px solid var(--line-dark); }
-.side-price small { color: var(--on-dark-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
-.side-price strong { display: block; font-family: var(--serif); font-size: 2.6rem; color: var(--gold-light); line-height: 1.1; }
+/* The card stays where it is (not sticky); the route map sits below it */
+.tour-side {
+  position: relative; z-index: 5;
+  margin-top: calc(-1 * (var(--body-pad) + var(--lift)));
+}
+/* Glass card: the top half (over the hero photo) is clear enough to see the image; the step at 50% falls exactly on
+   the photo's bottom edge (the card is lifted by half its height), so the half over the cream is darker and readable. */
+.side-card {
+  position: relative; overflow: hidden; color: var(--on-dark); border-radius: 22px; padding: 24px 26px 20px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ink) 28%, transparent) 0%,
+    color-mix(in srgb, var(--ink) 40%, transparent) 50%,
+    color-mix(in srgb, var(--ink) 84%, transparent) 50%,
+    color-mix(in srgb, var(--ink) 90%, transparent) 100%);
+  -webkit-backdrop-filter: blur(3px) saturate(120%); backdrop-filter: blur(3px) saturate(120%);
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  box-shadow: 0 34px 70px -28px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.side-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--gold-grad); }
+.side-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--line-dark); }
+.side-head .eyebrow { margin-bottom: 6px; font-size: 11px; letter-spacing: .26em; }
+.side-title { font-size: 1.55rem; margin: 0; line-height: 1.15; }
+.side-price { text-align: right; flex: none; }
+.side-price small { display: block; color: var(--on-dark-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+.side-price strong { display: block; font-family: var(--serif); font-size: 2.1rem; color: var(--gold-light); line-height: 1.05; }
+/* Compact form inside the card: 2 fields per row, tighter spacing */
+.form-grid.compact { gap: 10px 12px; margin-bottom: 14px; }
+.form-grid.compact .field { gap: 4px; }
+.form-grid.compact label { font-size: 11px; }
+.form-grid.compact input, .form-grid.compact textarea {
+  padding: 9px 12px; font-size: 14.5px; min-height: 44px; text-shadow: none;
+  background: color-mix(in srgb, var(--ink) 45%, transparent); border-color: rgba(255,255,255,.18);
+}
+.form-grid.compact input:focus, .form-grid.compact textarea:focus { background: color-mix(in srgb, var(--ink) 62%, transparent); }
+.side-card .btn { text-shadow: none; }
+.form-grid.compact textarea { resize: vertical; }
+.side-card .form-status { padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+.side-card .form-note { margin-top: 10px; font-size: 12.5px; }
+
+/* Layout: details on the left across both rows; enquiry card, then the route map, on the right */
+.tour-layout { grid-template-areas: "main side" "main route"; grid-template-rows: auto 1fr; row-gap: 28px; }
+.tour-main { grid-area: main; min-width: 0; }
+.tour-side { grid-area: side; }
+.tour-route { grid-area: route; align-self: start; }
+
+/* ---------- Tour route map: sits on the cream page, black + gold, same outline as the home explore map ---------- */
+.route-map { position: relative; width: min(100%, 400px); aspect-ratio: 400 / 662; margin: 76px auto 0; }
+.route-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rm-land-a { stop-color: var(--ink-3); }
+.rm-land-b { stop-color: var(--ink); }
+/* sea: two faint, thin gold rings around the island (no heavy halo) */
+.rm-contour { fill: none; stroke: var(--gold-deep); stroke-linejoin: round; }
+.rm-contour.c3 { display: none; }
+.rm-contour.c2 { stroke-width: 22; opacity: .05; }
+.rm-contour.c1 { stroke-width: 9; opacity: .1; }
+/* land is see-through (the hero photo / cream shows through); coast, route and pins stay solid */
+.rm-land { fill-opacity: .92; }
+.rm-shadow { display: none; }
+.rm-coast { fill: none; stroke: var(--gold); stroke-width: 1.6; opacity: .9; }
+.rm-compass circle { fill: none; stroke: var(--gold-deep); stroke-width: 1; opacity: .7; }
+.rm-compass path { fill: var(--gold-deep); }
+.rm-compass text { font: 600 13px var(--sans); fill: var(--gold-deep); }
+.rm-route {
+  fill: none; stroke: var(--gold-light); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1 9; animation: routeMarch 1.6s linear infinite;
+}
+.rm-leader { stroke: var(--gold-light); stroke-width: 1.2; opacity: .6; }
+.rm-dot { fill: var(--gold-light); stroke: var(--ink); stroke-width: 1.5; }
+
+/* pin = point on the map (0×0); the button and popup are positioned around it */
+.route-stop { position: absolute; z-index: 1; width: 0; height: 0; }
+.route-stop.open { z-index: 10; }
+.route-pin {
+  position: absolute; left: 0; top: 0; width: 26px; height: 26px; translate: -50% -50%; padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center; font: 600 12px/1 var(--sans); color: var(--ink); background: var(--gold-grad); cursor: pointer;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 75%, transparent), 0 4px 10px rgba(0,0,0,.45);
+  transition: scale .2s, box-shadow .2s;
+  animation: pinIn .45s cubic-bezier(.2,.8,.3,1.4) calc(var(--i) * 70ms + 150ms) both;
+}
+.route-pin::before { content: ""; position: absolute; inset: -9px; border-radius: 50%; } /* 44px touch target */
+.route-pin:focus-visible { border-radius: 50%; outline-offset: 4px; }
+.route-stop.open .route-pin { scale: 1.2; box-shadow: 0 0 0 3px var(--gold-light), 0 6px 14px rgba(0,0,0,.55); }
+
+.route-pop {
+  position: absolute; width: 250px; border-radius: 14px; overflow: hidden; color: var(--on-dark); background: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); box-shadow: 0 24px 50px -16px rgba(0,0,0,.6);
+  pointer-events: auto; animation: popIn .22s ease-out both;
+}
+.route-pop.h-mid { left: 0; translate: -50% 0; }
+.route-pop.h-start { left: -26px; }
+.route-pop.h-end { right: -26px; }
+.route-pop.above { bottom: 22px; }
+.route-pop.below { top: 22px; }
+.route-pop img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--ink-3); }
+.route-pop-body { display: grid; gap: 3px; padding: 12px 14px 14px; }
+.route-pop-day { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
+.route-pop strong { font-family: var(--serif); font-size: 1.25rem; font-weight: 600; line-height: 1.15; }
+.route-pop small { font-size: 12px; color: var(--gold-light); }
+.route-pop p {
+  margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--on-dark-muted);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+@keyframes routeMarch { to { stroke-dashoffset: -20; } }
+@keyframes pinIn { from { opacity: 0; scale: .3; } }
+@keyframes popIn { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) { .rm-route, .route-pin, .route-pop { animation: none; } }
 
 /* ---------- Footer ---------- */
 .site-footer { background: #070707; color: var(--on-dark-muted); padding: 90px 0 0; border-top: 1px solid var(--line-dark); }
@@ -520,7 +626,7 @@ body.no-scroll { overflow: hidden; }
   .nav-phone span { display: none; }
   .dest-grid { grid-template-columns: repeat(3, 1fr); }
   .guide-feature { grid-template-columns: 340px 1fr; gap: 40px; }
-  .tour-layout { grid-template-columns: 1fr 360px; gap: 40px; }
+  .tour-top { --side-w: 380px; --side-gap: 40px; }
   .explore-grid { grid-template-columns: 1fr minmax(280px, 340px) 1fr; gap: 24px; }
   .theme-img { width: 100px; height: 100px; padding: 6px; }
   .theme-card { min-height: 104px; gap: 16px; padding-right: 20px; }
@@ -561,7 +667,14 @@ body.no-scroll { overflow: hidden; }
   .hero-badges { display: none; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .faq-call { right: 16px; }
-  .tour-side { position: static; }
+  /* Stacked: card goes first, over the bottom of the hero image; the hero grows so its text stays clear */
+  .tour-hero { min-height: 0; padding-bottom: calc(var(--lift) + 40px); }
+  .tour-hero .container { padding-right: 0; }
+  /* Stacked order: enquiry card, tour details, route map */
+  .tour-layout { gap: 40px; grid-template-areas: "side" "main" "route"; grid-template-rows: none; }
+  .tour-side { width: 100%; max-width: 620px; margin-inline: auto; }
+  .route-map { width: min(100%, 360px); }
+  .route-pop { width: 220px; }
 }
 @media (max-width: 640px) {
   :root { --header-h: 72px; }
@@ -586,6 +699,11 @@ body.no-scroll { overflow: hidden; }
   .review-slider { padding: 30px 24px; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span-2 { grid-column: auto; }
+  .form-grid.compact { grid-template-columns: 1fr 1fr; }
+  .form-grid.compact .span-2 { grid-column: span 2; }
+  .side-card { padding: 20px 18px 16px; }
+  .side-title { font-size: 1.35rem; }
+  .side-price strong { font-size: 1.8rem; }
   .cta-form { padding: 24px; }
   .check-list.two-col { grid-template-columns: 1fr; }
   .lk-map { max-width: 250px; }

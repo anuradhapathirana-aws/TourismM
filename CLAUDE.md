@@ -95,7 +95,9 @@ hooks/                   useApi (async loader), useReveal (scroll animations),
                          useCountUp (stats), usePageTitle
 utils/format.js          waLink, telLink, mailLink, money, unsplash, resized, unique
 components/layout/       Header, Footer, Layout, ScrollManager, FloatingButtons
-components/ui/           SectionHeading, TourCard, InquiryForm, PageLoader
+components/ui/           SectionHeading, TourCard, TourBrowser, InquiryForm, PageLoader,
+                         TourRouteMap (tour page, under the enquiry form: itinerary places as numbered pins on the
+                         black/gold SL map; hover/focus/tap a pin → popup with photo + details)
 sections/home/           one file per home-page section (Hero, About, Destinations, WhyUs,
                          MeetGuides, DestinationMap, Tours, Testimonials, Faq, Contact)
 pages/                   Home, Tours (/tours, ?category=slug), TourDetail (/tours/:slug), NotFound
@@ -191,7 +193,7 @@ Field names below are what the frontend expects (camelCase). Map snake_case colu
 | GET ✅ | `/place-types` | `[{ id, slug, name, icon }]` |
 | GET ✅ | `/tour-categories` | `[{ id, slug, name, label, icon, summary, image, thumb, toursCount }]`. `label` = name without a trailing "Tours" (website tabs). How trips are classified (Beach Tours, Cultural & Heritage…). Separate from map themes |
 | GET ✅ | `/tours` | `[{ id, slug, title, category, categorySlug, categoryLabel, duration, days, price, currency, featured, image, thumb, summary, highlights[], itinerary[{title,details}], inclusions[] }]`. `duration` = "5 Days / 4 Nights" from the day count; `price` = lowest per-person price. Filters: `?category=&featured=1`. Home "Discover Sri Lanka" shows `featured` tours (first 6 if none) + "Show more tours" → `/tours` page (all tours; the header "Tours" menu links there too). Tabs follow the `/tour-categories` order |
-| GET ✅ | `/tours/{slug}` | the above + `content`, `exclusions[]`, `pace`, `groupMin`, `groupMax`, `startPoint`, `endPoint`, `bestMonths[]`, `prices[{paxFrom,paxTo,pax,vehicle,pricePerPerson}]`, `gallery[]`, and a full `itinerary[{day,title,details,overnight{name,slug},hotel,meals[],activities[{id,slug,name,description,image,thumb}],distanceKm,driveHours,image,destinations[{id,slug,name,lat,lng,thumb}]}]` (published points, active activities only). 404 → "Tour not found" |
+| GET ✅ | `/tours/{slug}` | the above + `content`, `exclusions[]`, `pace`, `groupMin`, `groupMax`, `startPoint`, `endPoint`, `bestMonths[]`, `prices[{paxFrom,paxTo,pax,vehicle,pricePerPerson}]`, `gallery[]`, and a full `itinerary[{day,title,details,overnight{name,slug},hotel,meals[],activities[{id,slug,name,description,image,thumb}],distanceKm,driveHours,image,destinations[{id,slug,name,lat,lng,category,city,description,image,thumb}]}]` (published points, active activities only). 404 → "Tour not found" |
 | GET | `/guides` | `[{ id, name, role, bio, photo, languages[], specialties[], years, toursLed, rating, whatsapp }]` |
 | GET | `/testimonials` | `[{ id, name, country, message, rating, photo }]` |
 | GET | `/faqs` | `[{ id, question, answer }]` |

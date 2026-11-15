@@ -32,7 +32,7 @@ function buildMessage(v, tourTitle) {
  * Enquiry form.
  * - With a backend (VITE_API_URL) it POSTs to /inquiries.
  * - Without one, it opens WhatsApp with the enquiry pre-filled.
- * Props: tours (for the select) OR fixedTour (detail page), compact (single column).
+ * Props: tours (for the select) OR fixedTour (detail page), compact (tighter 2-per-row layout for the tour card).
  */
 export default function InquiryForm({ tours = [], fixedTour = null, compact = false }) {
   const site = useSite()
@@ -126,11 +126,11 @@ export default function InquiryForm({ tours = [], fixedTour = null, compact = fa
         )}
       </div>
 
-      <div className={`form-grid${compact ? ' single' : ''}`}>
+      <div className={`form-grid${compact ? ' compact' : ''}`}>
         {field('name', 'Full name', { autoComplete: 'name' }, true)}
         {field('email', 'Email', { type: 'email', autoComplete: 'email' }, true)}
         {field('phone', 'Phone / WhatsApp', { type: 'tel', autoComplete: 'tel' })}
-        {!compact && field('country', 'Country', { autoComplete: 'country-name' })}
+        {field('country', 'Country', { autoComplete: 'country-name' })}
         {field('date', 'Travel date', { type: 'date' })}
         {field('travellers', 'Travellers', { type: 'number', min: 1, max: 99, inputMode: 'numeric' })}
         {!fixedTour && (
@@ -142,7 +142,7 @@ export default function InquiryForm({ tours = [], fixedTour = null, compact = fa
             </select>
           </div>
         )}
-        {field('message', 'Message', { as: 'textarea', span: true, rows: compact ? 3 : 4, placeholder: 'Tell us about your dream trip…' })}
+        {field('message', 'Message', { as: 'textarea', span: true, rows: compact ? 2 : 4, placeholder: 'Tell us about your dream trip…' })}
       </div>
 
       <button className="btn btn-gold btn-block" type="submit" disabled={sending} aria-busy={sending}>
